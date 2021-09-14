@@ -46,6 +46,8 @@ bank$y <- factor(bank$y, levels=rev(levels(bank$y)))
 params<-preProcess(bank,method=c("scale","center","nzv"))
 scaledbank<-predict(params,bank)
 
+
+
 #separate the data into train and test sets
 
 train<-sample(nrow(scaledbank),0.7*nrow(scaledbank))
@@ -61,7 +63,9 @@ banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
 ```{r models,include=F}
 
 
-TC <- trainControl(method = "boot", number=50,classProbs=TRUE,summaryFunction = twoClassSummary)
+#TC <- trainControl(method = "boot", number=50,classProbs=TRUE,summaryFunction = twoClassSummary)
+TC <- trainControl(method="repeatedcv", number=10,repeats=3,classProbs=TRUE,summaryFunction = twoClassSummary)
+                   
 
 
 bankrf <- train(Class~poutcome+job+loan+contact+campaign+month+cons.price.idx+cons.conf.idx+emp.var.rate+education+day_of_week, data=banktrain,
@@ -72,8 +76,8 @@ bankrf <- train(Class~poutcome+job+loan+contact+campaign+month+cons.price.idx+co
 predrf<-predict(bankrf,banktest)
 
 
-banktree=train(Class~.,data=banktrain, metric="ROC",trControl=TC,method='rpart',
-               control = rpart.control(cp=0.01, split=c("gini"),minbucket = 15))
+banktree=train(Class~.,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.01, split=c("gini"),minbucket = 5))
 predtree<-predict(banktree,banktest)
 
 
@@ -108,11 +112,16 @@ bankrad <- train(Class~poutcome+job+nr.employed+contact+campaign+month+cons.pric
 
 predrad<-predict(bankrad,banktest)
 
+#predrad<-predlog
+#predrf<-predtree
+#predlogfull<-predlog
+
+
 ```
 
 
-## I - Executive Summary
-## II - The Problem
+### I - Executive Summary
+### II - The Problem
 
 The task is to analyze the data set of customers provided by the banking institution, and determine what combination of personal characteristics and external factors are associated with the highest likelihood calling a client who will subscribe to a term deposit.
 
@@ -151,7 +160,7 @@ The full model doesn't yield more accurate predictions than the step-selected mo
 -----background on classifiers
 
 
-## V - Data
+### V - Data
 
 The data set to be used is a representative sample of the larger banking data set called 'bank-additional.csv', with additional being a reference to the quarterly economic indicators that are included in addition to the banking client data.
 
@@ -230,7 +239,7 @@ We can also see that excluding the variables with less predictive power does lit
 
 
 
-## VI - Findings
+### VI - Findings
 
 The confusion matrices and accuracy statistics from the models are listed below:
 
@@ -249,7 +258,7 @@ for(i in 1:5){
 Logistic regression identifies a slightly higher percentage of "yes" (subscribing to term deposits) clients, but has a lower overall accuracy than the linear SVM. This is because the rate of false "yes" predictions is higher for the logistic regression model. The random forest is less accurate than the SVM and has fewer true positives than the logistic regression or SVM. The model with the highest accuracy of "yes" predictions is actually the decision tree.
 
 
-## VII - Conclusions
+### VII - Conclusions
 
 The decision tree model "leaves money on the table" in that it doesn't predict as many of the customers who will make a term deposit as some of the other models. But the bank is not a doctor trying to catch every possible instance of cancer, instead it is trying to maximize profit. 
 
@@ -295,9 +304,9 @@ rpart.plot(banktree$finalModel)
 
 ```
 
-## Appendix
+### Appendix
 
-### Preprocessing the data
+#### Preprocessing the data
 
 ```{r  eval=F,echo=T}
 set.seed(12345)
@@ -345,7 +354,7 @@ banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
 
 
 
-### Determining most significant variables
+#### Determining most significant variables
 ```{r eval=F,echo=T}
 ##train logistic regressino and select variables by significance
 fullmodel<-glm(Class~.,banktrain,family=binomial)
@@ -364,7 +373,7 @@ head(imp[order(imp$Importance,decreasing = T),],10)
 
 ```
 
-### Training different models
+#### Training different models
 
 ```{r,eval=F,echo=T}
 
@@ -419,9 +428,10 @@ predrad<-predict(bankrad,banktest)
 ```
 
 
-### Model output
+#### Model output
 ```{r}
-predlogfull
+bankLOG
+bankLOGfull
 banktree
 bankrf
 bankrad
