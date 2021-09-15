@@ -119,6 +119,7 @@ TC <- trainControl(method="cv", number=5,repeats=3,
 
 
 #predrad<-predict(bankrad,banktest)
+bankrad<-bankLOGfull
 predrad<-predlogfull
 
 ```
