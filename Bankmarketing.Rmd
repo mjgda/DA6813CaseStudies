@@ -111,16 +111,15 @@ predlogfull<-predict(bankLOGfull,banktest)
 TC <- trainControl(method="cv", number=5,repeats=3,
                    classProbs=TRUE,summaryFunction = twoClassSummary)
 
-#bankrad <- train(Class~., data=banktrain,
-#                 method = "svmLinear",
-#                 metric="ROC",
-##                 trControl = TC,
-#                 tuneGrid = expand.grid(C = seq(0.001, 0.1, length = 10)))
+bankrad <- train(Class~., data=banktrain,
+                 method = "svmLinear",
+                 metric="ROC",
+                 trControl = TC,
+                 tuneGrid = expand.grid(C = seq(0.001, 0.1, length = 10)))
 
 
-#predrad<-predict(bankrad,banktest)
-bankrad<-bankLOGfull
-predrad<-predlogfull
+predrad<-predict(bankrad,banktest)
+
 
 ```
 
@@ -408,28 +407,37 @@ head(imp[order(imp$Importance,decreasing = T),],10)
 ```{r,eval=F,echo=T}
 
 
-
-#TC <- trainControl(method = "boot", number=50,classProbs=TRUE,summaryFunction = twoClassSummary)
-TC <- trainControl(method="repeatedcv", number=10,repeats=3,classProbs=TRUE,summaryFunction = twoClassSummary)
+TC <- trainControl(method="cv", number=5,repeats=3,classProbs=TRUE,summaryFunction = twoClassSummary)
                    
 
 
-bankrf <- train(Class~poutcome+job+loan+contact+campaign+month+cons.price.idx+cons.conf.idx+emp.var.rate+education+day_of_week, data=banktrain,
+bankrf <- train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing, data=banktrain,
                  method = "rf",
                  metric="ROC",
                  trControl = TC)
 
 predrf<-predict(bankrf,banktest)
 
+bankrffull <- train(Class~., data=banktrain,
+                 method = "rf",
+                 metric="ROC",
+                 trControl = TC)
 
-banktree=train(Class~.,data=banktrain, metric="Spec",trControl=TC,method='rpart',
-               control = rpart.control(cp=0.01, split=c("gini"),minbucket = 5))
+predrffull<-predict(bankrffull,banktest)
+
+
+
+banktreefull=train(Class~.,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
+predtreefull<-predict(banktreefull,banktest)
+
+
+banktree=train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
 predtree<-predict(banktree,banktest)
 
 
-
-
-bankLOG <- train(Class~previous+contact+campaign+cons.price.idx+cons.conf.idx+emp.var.rate+education+day_of_week, data=banktrain,
+bankLOG <- train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing, data=banktrain,
                  method = "glmnet",
                  metric="ROC",
                  trControl = TC)
@@ -446,17 +454,18 @@ predlogfull<-predict(bankLOGfull,banktest)
 
 
 
-TC <- trainControl(method="repeatedcv", number=10,repeats=3,
+TC <- trainControl(method="cv", number=5,repeats=3,
                    classProbs=TRUE,summaryFunction = twoClassSummary)
 
-bankrad <- train(Class~poutcome+job+contact+campaign+month+cons.price.idx+cons.conf.idx+emp.var.rate, data=banktrain,
+bankrad <- train(Class~., data=banktrain,
                  method = "svmLinear",
                  metric="ROC",
                  trControl = TC,
-                 tuneGrid = expand.grid(C = seq(0.01, 2, length = 10)))
+                 tuneGrid = expand.grid(C = seq(0.001, 0.1, length = 10)))
 
 
 predrad<-predict(bankrad,banktest)
+
 ```
 
 
