@@ -1,9 +1,6 @@
 ---
 title: "BankMarketing"
-group members: 
- - "Michael Grogan"
- - "Visha Arumugam"
- -"Yogi?"
+group members: "Visha Arumugam, Michael Grogan,Yogi?"
 output: html_document
 ---
 
@@ -15,6 +12,7 @@ library(MASS)
 library(car)
 library(dplyr)
 library(lsr)
+library(pedometrics)
 setwd("~/GitHub/DA6813CaseStudies")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
