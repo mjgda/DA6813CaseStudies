@@ -1,0 +1,523 @@
+---
+title: "BankMarketing"
+group members: 
+ - "Michael Grogan"
+ - "Visha Arumugam"
+ -"Yogi?"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(rpart.plot)
+library(MASS)
+library(car)
+library(dplyr)
+library(lsr)
+setwd("~/GitHub/DA6813CaseStudies")
+#setwd("~/MSDA/Fall 2021/GitHub")
+#setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
+```
+
+
+```{r readprepare, include=F}
+set.seed(12345)
+bank<-read.csv('bank-additional.csv',sep=";",stringsAsFactors = T)
+sum(is.na(bank))
+#duration in column 11
+bank<-bank[-11]
+
+#replace month abbreviations with numbers
+monthord<-as.character(bank$month)
+mn<-c('jan','feb','mar','apr','may','jun','jul',
+  'aug','sep','oct','nov','dec')
+md<-c(1,2,3,4,5,6,7,8,9,10,11,12)
+monthord[monthord %in% mn] <- md[match(monthord, mn)]
+bank$month<-as.factor(monthord)
+
+#replace day of week abbreviations with numbers
+weekord<-as.character(bank$day_of_week)
+mn<-c('mon','tue','wed','thu','fri','sat','sun')
+md<-c(1,2,3,4,5,6,7)
+weekord[weekord %in% mn] <- md[match(weekord, mn)]
+bank$day_of_week<-as.factor(weekord)
+
+#reverse levels so "yes" is returned as the positive class to the caret model
+bank$y <- factor(bank$y, levels=rev(levels(bank$y)))
+
+
+#scale and remove variables with near-zero variance(which turns out to be pdays)
+
+params<-preProcess(bank,method=c("scale","center","nzv"))
+scaledbank<-predict(params,bank)
+
+#separate the data into train and test sets
+
+train<-sample(nrow(scaledbank),0.7*nrow(scaledbank))
+banktrain<-scaledbank[train,]
+banktest<-scaledbank[-train,]
+
+#balance the target classes so the 
+banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
+
+```
+
+
+```{r models,include=F}
+#TC <- trainControl(method = "boot", number=50,classProbs=TRUE,summaryFunction = twoClassSummary)
+TC <- trainControl(method="cv", number=5,repeats=3,classProbs=TRUE,summaryFunction = twoClassSummary)
+                   
+
+
+bankrf <- train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing, data=banktrain,
+                 method = "rf",
+                 metric="ROC",
+                 trControl = TC)
+
+predrf<-predict(bankrf,banktest)
+
+bankrffull <- train(Class~., data=banktrain,
+                 method = "rf",
+                 metric="ROC",
+                 trControl = TC)
+
+predrffull<-predict(bankrffull,banktest)
+
+
+
+banktreefull=train(Class~.,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
+predtreefull<-predict(banktreefull,banktest)
+
+
+banktree=train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
+predtree<-predict(banktree,banktest)
+
+
+bankLOG <- train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing, data=banktrain,
+                 method = "glmnet",
+                 metric="ROC",
+                 trControl = TC)
+
+predlog<-predict(bankLOG,banktest)
+
+
+bankLOGfull <- train(Class~., data=banktrain,
+                 method = "glmnet",
+                 metric="ROC",
+                 trControl = TC)
+
+predlogfull<-predict(bankLOGfull,banktest)
+
+
+
+TC <- trainControl(method="cv", number=5,repeats=3,
+                   classProbs=TRUE,summaryFunction = twoClassSummary)
+
+bankrad <- train(Class~., data=banktrain,
+                 method = "svmLinear",
+                 metric="ROC",
+                 trControl = TC,
+                 tuneGrid = expand.grid(C = seq(0.001, 0.1, length = 10)))
+
+
+predrad<-predict(bankrad,banktest)
+
+
+banklda <- train(Class~age+job+education+marital+month+day_of_week+previous+contact+campaign+cons.price.idx+cons.conf.idx+poutcome, data=banktrain,method = "lda",metric='ROC',trControl = trainControl(method = "cv",classProbs=TRUE))
+
+predlda<-predict(banklda,banktest)
+
+
+```
+
+
+
+### I - Executive Summary
+### II - The Problem
+
+The task is to analyze the data set of customers provided by the banking institution, and determine what combination of personal characteristics and external factors are associated with the highest likelihood calling a client who will subscribe to a term deposit.
+
+The observations in the data set represent calls made to potential and existing clients of the bank, and the attributes describe the personal characteristics of the clients themselves(age, marital status, etc), the marketing behavior of the bank(e.g. number of contacts made by bank, time of year), as well as the economic climate at the time of the call(e.g. consumer confidence index).
+
+Most importantly, these calls have an indicating variable for whether or not the call resulted in the client subscribing to a term deposit, which is ultimately the reason the bank is making the calls.
+
+Ascertaining which factors are most correlated with subscribing to term deposits will allow the bank to save time and money by focusing on clients that are likely to subscribe, and avoiding those that are not.
+
+The following sections will describe in greater detail the nature of the data set and related literature as well as the methodology used to produce the predictive model with the most utility for the bank. 
+
+## III - Review of Related Literature
+There were few Marketing Analysis happened with this bank marketing data set and based upon the usage of various exploration, prediction techniques and hyper parameter optimization, different analysis came with different conclusion and Recommendation.
+As per the Journal of Visualization and Analysis in bank Direct marketing prediction by Alaa abu-srhan, based on the exploratory data analysis , different oversampling methods such as Synthetic Minority Oversampling technique, Random Over Oversampling Technique, Selective Pre-processing, etc are used to overcome the imbalance in the response variable which in turn increase prediction accuracy from various classification prediction techniques. Following are the classification techniques,(Random forest, support
+vector machine (SVM), neural network (NN), Naive Bayes,and k-nearest neighbor (KNN) classifiers), are used for the analysis and the results are compared on Gmean and accuracy evaluation metrics to identify the best results.As per the conclusion, SVM and Naive Bayes Classifier provides a better accuracy and Gmean values.
+  
+  Similarly in Data Mining- Bank Marketing Data set by "Kinga Włodarczyk", Different classifier Techniques such as KNN, Linear and logistic regression models have created using different dependent variables in order to predict the response by comparing the accuracy.
+  
+  In this analysis we are also going to try different classification techniques such as logistic regression, random forest, support vector machines with different hyper parameters and different predictors and compare the results based on the accuracy in order to identify the appropriate model.  
+
+## IV - Methodology
+
+We will test four types of classifier and compare the results to determine which will best serve to predict a successful call. These models are as follows: Logistic Regression, Random Forest, Decision Tree, and Linear Support Vector Machine.
+
+Prior to the training process for any of the models the variables are selected and modified for more efficient computation and accurate results. Variables that lack predictive value are removed, and numeric data describing unrelated phenomena are scaled to condense the dimensional space for the calculations.
+
+The data then needs to be balanced for the target class, because with the unmodified data set a classifier could achieve 90% accuracy by predicting a 'no' response for every observation. A balanced training set is created by resampling the "yes" observations to match the quantity of "no" observations. However, after the classifier is trained, it will be tested on the unbalanced test set in order to determine how the classifier would perform under real conditions.
+
+The entire reason the bank is calling people is in the hope of finding potential customers, so a model that only predicts "no" is useless even if it may be very accurate.
+
+
+After the data is prepared and divided into a balanced training set and unbalanced test set, important variables are determined first by performing stepwise selection using AIC for a logistic regression using a full model.
+
+The full model doesn't yield more accurate predictions than the step-selected model, so the remaining models are tested with the limited set of significant predictors.
+
+-----background on classifiers
+
+
+### V - Data
+
+The data set to be used is a representative sample of the larger banking data set called 'bank-additional.csv', with additional being a reference to the quarterly economic indicators that are included in addition to the banking client data.
+
+As is outlined in the data dictionary, "duration" serves no predictive purpose, because it can only be known after the call is made, and can't be used in the decision for which customer to call, so it is removed. Also removed is the pdays variable which represents the number of days that have passed since the client was last called. This variable lacks sufficient variance to provide meaningful predictive value because the dummy value of 999 given to signify a call to a new customer is so numerous and so far from the real values.
+```{r}
+table(bank$pdays)
+```
+
+
+
+
+After the data is preprocessed, we examine the predictors that have the highest significance in a full logistic regression model.
+
+
+
+```{r steplog, echo=F}
+fullmodel<-glm(Class~.,banktrain,family=binomial)
+
+stepped<-stepAIC(fullmodel, direction = "both",trace = FALSE)
+
+idx <- order(coef(summary(stepped))[,4])  
+out <- coef(summary(stepped))[idx,]     
+head(out,15)
+
+
+```
+
+
+
+```{r importance, echo=F}
+imp <- as.data.frame(varImp(fullmodel))
+imp <- data.frame(Importance = imp$Overall,
+           Variable_Name   = rownames(imp))
+head(imp[order(imp$Importance,decreasing = T),],15)
+
+
+
+```
+
+The most important variables in the full logistic regression model are the same as the variables with the lowest p-values when using stepwise predictor selection, which makes sense.
+
+```{r importance1, echo=F}
+correlate(scaledbank)
+```
+
+As per the above correlation matrix there exist a severe correlation between employment varaiation rate,and consumer price index, euribor3m and number of employees for the campaign,so if we remove the above variables from the model prediction we can avoid the collinearity issue
+
+```{r importance2, echo=F}
+stepVIF(glm(y~age+campaign+previous+poutcome+cons.conf.idx+cons.price.idx+euribor3m,scaledbank,family = 'binomial'))
+```
+
+### Variation inflation factor
+```{r importance3, echo=F}
+vif(glm(y~age+campaign+previous+poutcome+cons.conf.idx+cons.price.idx+euribor3m+emp.var.rate+nr.employed,scaledbank,family=binomial))
+```
+
+Based on VIF value the euribor3m,emp.var.rate and nr.employed has the high VIF value . If we include these predictors in the model it will lead to collinearity issue.
+
+Next we will examine the distribution of the "yes" and "no" class across these significant variables.
+
+```{r plots1, echo=FALSE}
+
+par(mfrow=c(3,1))
+
+plot(banktrain$month,banktrain$Class,xlab="Month")
+plot(banktrain$job,banktrain$Class,xlab="Job")
+plot(banktrain$education,banktrain$Class,xlab="Education")
+
+
+
+```
+
+
+```{r plots2, echo=FALSE}
+
+par(mfrow=c(2,4))
+
+plot(bank$y,bank$contact,ylab="Contact")
+plot(bank$y,bank$age,ylab="Age")
+plot(bank$y,bank$marital,ylab="Marital Status")
+
+plot(bank$y,bank$campaign,ylab="Campaign")
+
+plot(bank$y,bank$cons.price.idx,ylab="Price Index")
+plot(bank$y,bank$cons.conf.idx,ylab="Consumer Confidence")
+plot(bank$y,bank$nr.employed,ylab="Number of Employees")
+plot(bank$y,bank$emp.var.rate,ylab="Employment Variation Rate")
+
+```
+
+We can see that, perhaps surprisingly, the apparently strongest difference in means are in the aggregate economic indicators rather than the most of the individual personal data. This can potentially be a problem, because while the strength of the economic statistics as predictors can result in a more accurate model using training data, a prediction model that relies heavily on variables out of control of the bank is not useful to the bank when trying to decide who to call. 
+
+
+
+### VI - Findings
+
+The confusion matrices and accuracy statistics from the models are listed below:
+
+```{r echo=F}
+predictions<-list(predlog,predlogfull,predtree,predtreefull,predrad,predrf,predrffull,predlda)
+#predictions<-list(predlog,predlogfull,predrf,predtree,predrad)
+labelcf<-c("Personal Logistic Regression","Full Model Logistic Regression","Personal Decision Tree","Full Decision Tree","Full Linear SVC","Personal Random Forest","Full Random Forest","Linear Discriminant Analysis")
+
+for(i in 1:8){
+  print(labelcf[i])
+  print(confusionMatrix(unlist(predictions[i]),banktest$y)$table)
+  print(confusionMatrix(unlist(predictions[i]),banktest$y)$byClass[c(3,11)])
+  cat("\n")
+}
+
+```
+
+Clearly the highest levels of both accuracy and rate of successful positive prediction are in the models that use all of the variables, and so these models provide the best predictive performance when viewed at face value. However, the variable importance reveals the source of the high predictive value in the decision tree, SVC, and random forest is based on the quarterly economic indicators:
+
+```{r echo=F}
+print("Logistic Regression Variable Importance")
+varImp(bankLOGfull)
+print("Decision Tree Variable Importance")
+varImp(banktreefull)
+print("Random Forest Variable Importance")
+varImp(bankrffull)
+print("Linear SVM Variable Importance")
+varImp(bankrad)
+print("Linear Discriminant Analysis Importance")
+varImp(banklda)
+
+
+```
+The high importance value for the illiterate education category is not as concerning for the logistic model, because it represents only one observation in the original data set and thus is not relevant in any likely test or production data.
+
+When the deciding factors for calling the client are mainly external economic indicators, the bank can be left in a situation where the model is recommending to make no calls because the national statistics aren't favorable. The advantage of the flexibility of the model based on personal attributes vs the tree that includes the indicators is obvious:
+
+```{r echo=FALSE}
+rpart.plot(banktree$finalModel)
+
+rpart.plot(banktreefull$finalModel)
+
+```
+
+### VII - Conclusions
+
+Both of the random forest models(full model and personal-only attributes) have the higher positive call prediction rates. However, the reason they do is because they are overall more conservative and thus "leave money on the table" in that they don't predict as many of the customers who will make a term deposit as some of the other models. But the bank is not a doctor trying to catch every possible instance of cancer, instead it is trying to maximize profit. Although, as mentioned, the dependency of the full random forest model on the external indicators means risking predicting "no" for every call when the statistics aren't in range.
+
+The cost to the bank to make one call divided by the average revenue generated by a successful call is the cost-to-revenue ratio. To recoup the cost of making calls, this ratio cannot exceed the success rate of the calls made. From this standpoint, if we consider only the personal attributes, then using the random forest model to choose which customers to call will maximize the profit as long as the cost-to-revenue ratio stays below .18.
+
+
+However there are potentially reasons to choose a less profitable model that predicts more positive calls overall. For example, if there were a minimum number of term deposits necessary to meet some regulatory requirement, the bank would need to prioritize reaching that minimum number at the expense of profitability on those calls. Or if the client-base for the bank is not large enough, they could eventually run out of people to call if their model is too conservative.
+
+The two models that provides the best of both worlds are the full logistic model and the full Linear SVC. However the SVC has the same issue of depending heavily on the economic metrics, and so given that the results are very similar between the two models, it makes sense to choose the logistic regression. It has the second highest positive predictive accuracy, but 70% more positive results than the model with top accuracy.
+
+The chart below displays the range of cost ratios at which a given model will still provide profitable predictions.
+
+
+```{r echo=FALSE}
+lf<-confusionMatrix(predlogfull,banktest$y)$byClass[3]
+lp<-confusionMatrix(predlog,banktest$y)$byClass[3]
+rf<-confusionMatrix(predrf,banktest$y)$byClass[3]
+rff<-confusionMatrix(predrffull,banktest$y)$byClass[3]
+svml<-confusionMatrix(predrad,banktest$y)$byClass[3]
+dp<-confusionMatrix(predtree,banktest$y)$byClass[3]
+dt<-confusionMatrix(predtreefull,banktest$y)$byClass[3]
+
+plot(x=1,y=1,ylab="Cost-To-Revenue Ratio",xlab="Call Success Rate",xlim=c(0.035,0.5),ylim=c(0.035,0.5))
+abline(0,1,lwd = 2, lty = 3)
+
+lines(c(lf,lf),c(lf,0),lwd = 4,col="orange")
+lines(c(lp,lp),c(lp,0),lwd = 2,col="darkblue")
+lines(c(rf,rf),c(rf,0),lwd = 2,col="blue")
+lines(c(rff,rff),c(rff,0),lwd = 2,lty=2,col="blue")
+lines(c(svml,svml),c(svml,0),lty=2,lwd = 2,col="red")
+lines(c(dt,dt),c(dt,0),lwd = 2,col="green")
+lines(c(dp,dp),c(dp,0),lwd = 2,col="black")
+lines(c(dp,dp),c(dp,0),lwd = 2,lty=2,col="green")
+
+legend("topleft",legend=c("Full Logistic Regression","Personal LogReg","Personal Random Forest","Full Random Forest","Linear SVM","Full Decision Tree","Personal Decision Tree","LDA","Break-even Profitability"),lty=c(1,1,1,2,2,1,1,2,3),lwd = 2,col = c("orange", "darkblue","blue","blue","red","green","black","green","black"))
+```
+
+Overall, assuming the bank has the option to do so, the full logistic regression model provides the predictions that will accommodate the widest range of cost-to-revenue ratios without an excessive reliance on external variables.
+
+
+
+
+
+```{r}
+
+```
+
+### Appendix
+
+#### Preprocessing the data
+
+```{r  eval=F,echo=T}
+set.seed(12345)
+bank<-read.csv('bank-additional.csv',sep=";",stringsAsFactors = T)
+sum(is.na(bank))
+#duration in column 11
+bank<-bank[-11]
+
+#replace month abbreviations with numbers
+monthord<-as.character(bank$month)
+mn<-c('jan','feb','mar','apr','may','jun','jul',
+  'aug','sep','oct','nov','dec')
+md<-c(1,2,3,4,5,6,7,8,9,10,11,12)
+monthord[monthord %in% mn] <- md[match(monthord, mn)]
+bank$month<-as.factor(monthord)
+
+#replace day of week abbreviations with numbers
+weekord<-as.character(bank$day_of_week)
+mn<-c('mon','tue','wed','thu','fri','sat','sun')
+md<-c(1,2,3,4,5,6,7)
+weekord[weekord %in% mn] <- md[match(weekord, mn)]
+bank$day_of_week<-as.factor(weekord)
+
+#reverse levels so "yes" is returned as the positive class to the caret model
+bank$y <- factor(bank$y, levels=rev(levels(bank$y)))
+
+
+#scale and remove variables with near-zero variance(which turns out to be pdays)
+
+params<-preProcess(bank,method=c("scale","center","nzv"))
+scaledbank<-predict(params,bank)
+
+#separate the data into train and test sets
+
+train<-sample(nrow(scaledbank),0.7*nrow(scaledbank))
+banktrain<-scaledbank[train,]
+banktest<-scaledbank[-train,]
+
+#balance the target classes so the 
+banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
+
+```
+
+
+
+
+
+#### Determining most significant variables
+```{r eval=F,echo=T}
+##train logistic regressino and select variables by significance
+fullmodel<-glm(Class~.,banktrain,family=binomial)
+
+stepped<-stepAIC(fullmodel, direction = "both",trace = FALSE)
+
+idx <- order(coef(summary(stepped))[,4])  
+out <- coef(summary(stepped))[idx,]     
+head(out,15)
+
+###importance
+imp <- as.data.frame(varImp(fullmodel))
+imp <- data.frame(Importance = imp$Overall,
+           Variable_Name   = rownames(imp))
+head(imp[order(imp$Importance,decreasing = T),],10)
+
+
+stepVIF(glm(y~age+campaign+previous+poutcome+cons.conf.idx+cons.price.idx+euribor3m,scaledbank,family = 'binomial'))
+
+vif(glm(y~age+campaign+previous+poutcome+cons.conf.idx+cons.price.idx+euribor3m+emp.var.rate+nr.employed,scaledbank,family=binomial))
+
+```
+
+#### Training different models
+
+```{r,eval=F,echo=T}
+
+#TC <- trainControl(method = "boot", number=50,classProbs=TRUE,summaryFunction = twoClassSummary)
+TC <- trainControl(method="cv", number=5,repeats=3,classProbs=TRUE,summaryFunction = twoClassSummary)
+                   
+
+
+bankrf <- train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing, data=banktrain,
+                 method = "rf",
+                 metric="ROC",
+                 trControl = TC)
+
+predrf<-predict(bankrf,banktest)
+
+bankrffull <- train(Class~., data=banktrain,
+                 method = "rf",
+                 metric="ROC",
+                 trControl = TC)
+
+predrffull<-predict(bankrffull,banktest)
+
+
+
+banktreefull=train(Class~.,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
+predtreefull<-predict(banktreefull,banktest)
+
+
+banktree=train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
+predtree<-predict(banktree,banktest)
+
+
+bankLOG <- train(Class~age+marital+education+default+loan+contact+job+campaign+day_of_week+housing, data=banktrain,
+                 method = "glmnet",
+                 metric="ROC",
+                 trControl = TC)
+
+predlog<-predict(bankLOG,banktest)
+
+
+bankLOGfull <- train(Class~., data=banktrain,
+                 method = "glmnet",
+                 metric="ROC",
+                 trControl = TC)
+
+predlogfull<-predict(bankLOGfull,banktest)
+
+
+
+TC <- trainControl(method="cv", number=5,repeats=3,
+                   classProbs=TRUE,summaryFunction = twoClassSummary)
+
+bankrad <- train(Class~., data=banktrain,
+                 method = "svmLinear",
+                 metric="ROC",
+                 trControl = TC,
+                 tuneGrid = expand.grid(C = seq(0.001, 0.1, length = 10)))
+
+
+predrad<-predict(bankrad,banktest)
+
+
+banklda <- train(Class~age+job+education+marital+month+day_of_week+previous+contact+campaign+cons.price.idx+cons.conf.idx+poutcome, data=banktrain,method = "lda",metric='ROC',trControl = trainControl(method = "cv",classProbs=TRUE))
+
+predlda<-predict(banklda,banktest)
+
+
+
+```
+
+
+#### Model output
+```{r}
+bankLOG
+bankLOGfull
+banktree
+bankrf
+bankrad
+
+```
+
