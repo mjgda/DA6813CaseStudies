@@ -1,6 +1,6 @@
 ---
 title: "Bank Marketing Case Study Report"
-group members: "Vishalakshi Arumugam, Michael Grogan,Sanyogita Apte"
+author: "Visha Arumugam(vcu526), Michael Grogan(ldl776),Sanyogita Apte(jlh562)"
 date: "September 18, 2021"
 output: html_document
 ---
