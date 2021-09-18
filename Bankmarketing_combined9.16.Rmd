@@ -378,17 +378,21 @@ print("Linear SVM Variable Importance")
 varImp(bankrad)
 print("Linear Discriminant Analysis Importance")
 varImp(banklda)
+varImp(banklda_bor)
+varImp(bankLOG_bor)
 
 
 ```
 The high importance value for the illiterate education category is not as concerning for the logistic model, because it represents only one observation in the original data set and thus is not relevant in any likely test or production data.
 
-When the deciding factors for calling the client are mainly external economic indicators, the bank can be left in a situation where the model is recommending to make no calls because the national statistics aren't favorable. The advantage of the flexibility of the model based on personal attributes vs the tree that includes the indicators is obvious:
+For all other models,when the deciding factors for calling the client are mainly external economic indicators, the bank can be left in a situation where the model is recommending to make no calls because the national statistics aren't favorable. The advantage of the flexibility of the model based on personal attributes vs the model that includes the indicators is obvious.
 
 ```{r echo=FALSE}
 rpart.plot(banktree$finalModel)
 
 rpart.plot(banktreefull$finalModel)
+
+rpart.plot(banktree_bor$finalModel)
 
 ```
 
@@ -434,10 +438,10 @@ lines(c(lda_per,lda_per),c(lda_per,0),lwd = 2,lty=2,col="green")
 lines(c(lg_sig,lg_sig),c(lg_sig,0),lwd = 2,col="brown")
 lines(c(rf_sig,rf_sig),c(rf_sig,0),lwd = 2,col="cyan")
 lines(c(svml_sig,svml_sig),c(svml_sig,0),lwd = 2,col="grey")
-lines(c(dt_sig,dt_sig),c(dt_sig,0),lwd = 2,col="maroon")
+lines(c(dt_sig,dt_sig),c(dt_sig,0),lwd = 2,col="red")
 lines(c(lda_sig,lda_sig),c(lda_sig,0),lwd = 2,col="pink")
 
-legend("topleft",legend=c("Full Logistic Regression","Personal LogReg","Personal Random Forest","Full Random Forest","Linear SVM","Full Decision Tree","Personal Decision Tree","LDA","Break-even Profitability","Sig Logistic Regression","Sig Random Forest","Sig Linear SVM","Sig Decision Tree","Sig LDA"),lty=c(1,1,1,2,2,1,1,2,3,1,1,1,1,1),lwd = 2,cex=0.7,col = c("orange", "darkblue","blue","blue","red","green","black","green","black","brown","cyan","grey","maroon","pink"))
+legend("topleft",legend=c("Full Logistic Regression","Personal LogReg","Personal Random Forest","Full Random Forest","Linear SVM","Full Decision Tree","Personal Decision Tree","LDA","Break-even Profitability","Sig Logistic Regression","Sig Random Forest","Sig Linear SVM","Sig Decision Tree","Sig LDA"),lty=c(1,1,1,2,2,1,1,2,3,1,1,1,1,1),lwd = 2,cex=0.7,col = c("orange", "darkblue","blue","blue","red","green","black","green","black","brown","cyan","grey","red","pink"))
 ```
 
 Overall, assuming the bank has the option to do so, the full logistic regression model provides the predictions that will accommodate the widest range of cost-to-revenue ratios without an excessive reliance on external variables.
