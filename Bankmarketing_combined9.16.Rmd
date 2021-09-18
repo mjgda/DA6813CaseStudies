@@ -405,12 +405,6 @@ The two models that provides the best of both worlds are the full logistic model
 
 The chart below displays the range of cost ratios at which a given model will still provide profitable predictions.
 
-```{r}
-lf<-caret::confusionMatrix(predlogfull,banktest$y)$byClass[3]
-lf
-```
-
-
 ```{r echo=FALSE}
 lf<-caret::confusionMatrix(predlogfull,banktest$y)$byClass[3]
 lp<-caret::confusionMatrix(predlog,banktest$y)$byClass[3]
