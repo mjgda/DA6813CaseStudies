@@ -64,6 +64,10 @@ banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
 
 ```
 
+```{r}
+str(banktrain)
+```
+
 
 ```{r models,include=F}
 #TC <- trainControl(method = "boot", number=50,classProbs=TRUE,summaryFunction = twoClassSummary)
@@ -348,14 +352,14 @@ We can see that, perhaps surprisingly, the apparently strongest difference in me
 The confusion matrices and accuracy statistics from the models are listed below:
 
 ```{r echo=F}
-predictions<-list(predlog,predlogfull,predtree,predtreefull,predrad,predrf,predrffull,predlda)
+predictions<-list(predlog,predlogfull,predtree,predtreefull,predrad,predrf,predrffull,predlda,predlog_bor,predrf_bor,predrf_bor,predrad_bor,predlda_bor)
 #predictions<-list(predlog,predlogfull,predrf,predtree,predrad)
-labelcf<-c("Personal Logistic Regression","Full Model Logistic Regression","Personal Decision Tree","Full Decision Tree","Full Linear SVC","Personal Random Forest","Full Random Forest","Linear Discriminant Analysis")
+labelcf<-c("Personal Logistic Regression","Full Model Logistic Regression","Personal Decision Tree","Full Decision Tree","Full Linear SVC","Personal Random Forest","Full Random Forest","Linear Discriminant Analysis","Logistic Regress with sig variables","Decision Tree with sig Variables","Random Forest with sig Variables","Linear SVC with sig Variables","Linear Discriminant Analysis with sig Variables")
 
-for(i in 1:8){
+for(i in 1:13){
   print(labelcf[i])
-  print(confusionMatrix(unlist(predictions[i]),banktest$y)$table)
-  print(confusionMatrix(unlist(predictions[i]),banktest$y)$byClass[c(3,11)])
+  print(caret::confusionMatrix(unlist(predictions[i]),banktest$y)$table)
+  print(caret::confusionMatrix(unlist(predictions[i]),banktest$y)$byClass[c(3,11)])
   cat("\n")
 }
 
