@@ -405,15 +405,26 @@ The two models that provides the best of both worlds are the full logistic model
 
 The chart below displays the range of cost ratios at which a given model will still provide profitable predictions.
 
+```{r}
+lf<-caret::confusionMatrix(predlogfull,banktest$y)$byClass[3]
+lf
+```
+
 
 ```{r echo=FALSE}
-lf<-confusionMatrix(predlogfull,banktest$y)$byClass[3]
-lp<-confusionMatrix(predlog,banktest$y)$byClass[3]
-rf<-confusionMatrix(predrf,banktest$y)$byClass[3]
-rff<-confusionMatrix(predrffull,banktest$y)$byClass[3]
-svml<-confusionMatrix(predrad,banktest$y)$byClass[3]
-dp<-confusionMatrix(predtree,banktest$y)$byClass[3]
-dt<-confusionMatrix(predtreefull,banktest$y)$byClass[3]
+lf<-caret::confusionMatrix(predlogfull,banktest$y)$byClass[3]
+lp<-caret::confusionMatrix(predlog,banktest$y)$byClass[3]
+rf<-caret::confusionMatrix(predrf,banktest$y)$byClass[3]
+rff<-caret::confusionMatrix(predrffull,banktest$y)$byClass[3]
+svml<-caret::confusionMatrix(predrad,banktest$y)$byClass[3]
+dp<-caret::confusionMatrix(predtree,banktest$y)$byClass[3]
+dt<-caret::confusionMatrix(predtreefull,banktest$y)$byClass[3]
+lda_per<-caret::confusionMatrix(predlda,banktest$y)$byClass[3]
+lg_sig<-caret::confusionMatrix(predlog_bor,banktest$y)$byClass[3]
+rf_sig<-caret::confusionMatrix(predrf_bor,banktest$y)$byClass[3]
+svml_sig<-caret::confusionMatrix(predrad_bor,banktest$y)$byClass[3]
+dt_sig<-caret::confusionMatrix(predtree_bor,banktest$y)$byClass[3]
+lda_sig<-caret::confusionMatrix(predlda_bor,banktest$y)$byClass[3]
 
 plot(x=1,y=1,ylab="Cost-To-Revenue Ratio",xlab="Call Success Rate",xlim=c(0.035,0.5),ylim=c(0.035,0.5))
 abline(0,1,lwd = 2, lty = 3)
@@ -425,9 +436,14 @@ lines(c(rff,rff),c(rff,0),lwd = 2,lty=2,col="blue")
 lines(c(svml,svml),c(svml,0),lty=2,lwd = 2,col="red")
 lines(c(dt,dt),c(dt,0),lwd = 2,col="green")
 lines(c(dp,dp),c(dp,0),lwd = 2,col="black")
-lines(c(dp,dp),c(dp,0),lwd = 2,lty=2,col="green")
+lines(c(lda_per,lda_per),c(lda_per,0),lwd = 2,lty=2,col="green")
+lines(c(lg_sig,lg_sig),c(lg_sig,0),lwd = 2,col="brown")
+lines(c(rf_sig,rf_sig),c(rf_sig,0),lwd = 2,col="cyan")
+lines(c(svml_sig,svml_sig),c(svml_sig,0),lwd = 2,col="grey")
+lines(c(dt_sig,dt_sig),c(dt_sig,0),lwd = 2,col="maroon")
+lines(c(lda_sig,lda_sig),c(lda_sig,0),lwd = 2,col="pink")
 
-legend("topleft",legend=c("Full Logistic Regression","Personal LogReg","Personal Random Forest","Full Random Forest","Linear SVM","Full Decision Tree","Personal Decision Tree","LDA","Break-even Profitability"),lty=c(1,1,1,2,2,1,1,2,3),lwd = 2,col = c("orange", "darkblue","blue","blue","red","green","black","green","black"))
+legend("topleft",legend=c("Full Logistic Regression","Personal LogReg","Personal Random Forest","Full Random Forest","Linear SVM","Full Decision Tree","Personal Decision Tree","LDA","Break-even Profitability","Sig Logistic Regression","Sig Random Forest","Sig Linear SVM","Sig Decision Tree","Sig LDA"),lty=c(1,1,1,2,2,1,1,2,3,1,1,1,1,1),lwd = 2,cex=0.7,col = c("orange", "darkblue","blue","blue","red","green","black","green","black","brown","cyan","grey","maroon","pink"))
 ```
 
 Overall, assuming the bank has the option to do so, the full logistic regression model provides the predictions that will accommodate the widest range of cost-to-revenue ratios without an excessive reliance on external variables.
@@ -583,7 +599,39 @@ banklda <- train(Class~age+job+education+marital+month+day_of_week+previous+cont
 
 predlda<-predict(banklda,banktest)
 
+# SVM Model using Boruta Significant Variables
+bankrad_bor <- train(Class~age+job+marital+month+previous+campaign+cons.price.idx+cons.conf.idx+poutcome+emp.var.rate+euribor3m+nr.employed, data=banktrain,
+                 method = "svmLinear",
+                 metric="ROC",
+                 trControl = TC,
+                 tuneLength=8)
+predrad_bor<-predict(bankrad_bor,banktest)
 
+# Linear Discriminant Analysis using Significant Variables
+banklda_bor =train(Class~age+job+marital+month+previous+campaign+cons.price.idx+cons.conf.idx+poutcome+emp.var.rate+euribor3m+nr.employed, data=banktrain,method = "lda",metric='ROC',trControl = trainControl(method = "cv",classProbs=TRUE))
+
+predlda_bor<-predict(banklda_bor,banktest)
+
+# Random Forest using Significant Variables
+bankrf_bor <- train(Class~age+job+marital+month+previous+campaign+cons.price.idx+cons.conf.idx+poutcome+emp.var.rate+euribor3m+nr.employed, data=banktrain,
+                 method = "rf",
+                 metric="ROC",
+                 trControl = trainControl(method="repeatedcv", number=5,repeats = 3,classProbs=TRUE,summaryFunction = twoClassSummary))
+
+predrf_bor<-predict(bankrf_bor,banktest)
+
+# Logistic Regression using Significant Variables
+bankLOG_bor <- train(Class~age+job+marital+month+previous+campaign+cons.price.idx+cons.conf.idx+poutcome+emp.var.rate+euribor3m+nr.employed, data=banktrain,
+                 method = "glmnet",
+                 metric="ROC",
+                 trControl = trainControl(method="repeatedcv", number=5,repeats = 3,classProbs=TRUE,summaryFunction = twoClassSummary))
+predlog_bor<-predict(bankLOG_bor,banktest)
+
+# Decision Tree Using Significant Variabels
+
+banktree_bor=train(Class~age+job+marital+month+previous+campaign+cons.price.idx+cons.conf.idx+poutcome+emp.var.rate+euribor3m+nr.employed,data=banktrain, metric="Spec",trControl=TC,method='rpart',
+               control = rpart.control(cp=0.0001, split=c("gini"),minbucket = 5))
+predtree_bor<-predict(banktree_bor,banktest)
 
 ```
 
