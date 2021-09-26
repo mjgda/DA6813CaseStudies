@@ -1,0 +1,100 @@
+---
+title: "BookBinders Book Club"
+group members: "Visha Arumugam, Michael Grogan,Sanyogita Apte"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(Boruta)
+library(Rcpp)
+library(InformationValue)
+setwd("~/GitHub/DA6813CaseStudies")
+#setwd("~/MSDA/Fall 2021/GitHub")
+#setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
+#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies")
+```
+
+
+```{r readprepare, include=F}
+set.seed(12345)
+bank<-read.csv('bank-additional.csv',sep=";",stringsAsFactors = T)
+sum(is.na(bank))
+#duration in column 11
+bank<-bank[-11]
+
+#replace month abbreviations with numbers
+monthord<-as.character(bank$month)
+mn<-c('jan','feb','mar','apr','may','jun','jul',
+  'aug','sep','oct','nov','dec')
+md<-c(1,2,3,4,5,6,7,8,9,10,11,12)
+monthord[monthord %in% mn] <- md[match(monthord, mn)]
+bank$month<-as.factor(monthord)
+
+#replace day of week abbreviations with numbers
+weekord<-as.character(bank$day_of_week)
+mn<-c('mon','tue','wed','thu','fri','sat','sun')
+md<-c(1,2,3,4,5,6,7)
+weekord[weekord %in% mn] <- md[match(weekord, mn)]
+bank$day_of_week<-as.factor(weekord)
+
+#reverse levels so "yes" is returned as the positive class to the caret model
+bank$y <- factor(bank$y, levels=rev(levels(bank$y)))
+
+
+#scale and remove variables with near-zero variance(which turns out to be pdays)
+
+params<-preProcess(bank,method=c("scale","center","nzv"))
+scaledbank<-predict(params,bank)
+
+#separate the data into train and test sets
+
+train<-sample(nrow(scaledbank),0.7*nrow(scaledbank))
+banktrain<-scaledbank[train,]
+banktest<-scaledbank[-train,]
+
+#balance the target classes so the 
+banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
+
+```
+
+
+### I - Executive Summary
+
+
+
+
+### II - The Problem
+
+
+## III - Review of Related Literature
+
+## IV - Methodology
+
+
+### V - Data
+
+
+
+
+### VI - Findings
+
+
+### VII - Conclusions
+
+
+### Appendix
+
+#### Preprocessing the data
+
+
+#### Determining most significant variables
+
+
+
+
+#### Training different models
+
+
+#### Model output
