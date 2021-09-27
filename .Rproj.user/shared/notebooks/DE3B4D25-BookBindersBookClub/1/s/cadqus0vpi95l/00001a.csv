@@ -1,0 +1,18 @@
+"0","boruta_var_imp_output=Boruta(Choice~.,data=bbtrain,doTrace=1)"
+"2","After 10 iterations, +15 secs: 
+"
+"2"," confirmed 9 attributes: Amount_purchased, First_purchase, Frequency, Gender, Last_purchase and 4 more;
+"
+"2"," no more attributes left.
+
+"
+"0","boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)"
+"0",""
+"0",""
+"0",""
+"0","boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)"
+"2","There are no Tentative attributes! Returning original object."
+"0","# Variable Importance Scores"
+"0","boruta_imps <- attStats(boruta_roug_fix_mod)"
+"0","boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]"
+"0","boruta_imps2[order(-boruta_imps2$meanImp), ]"

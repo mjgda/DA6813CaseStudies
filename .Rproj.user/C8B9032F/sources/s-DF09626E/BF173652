@@ -3,24 +3,24 @@
     "path": "~/GitHub/DA6813CaseStudies/Case2/BookBindersBookClub.Rmd",
     "project_path": "Case2/BookBindersBookClub.Rmd",
     "type": "r_markdown",
-    "hash": "0",
+    "hash": "179505756",
     "contents": "",
-    "dirty": true,
+    "dirty": false,
     "created": 1632459204030.0,
     "source_on_save": false,
     "relative_order": 2,
     "properties": {
         "tempName": "Untitled1",
-        "cursorPosition": "24,41",
-        "scrollLine": "14",
-        "last_setup_crc32": "DF09626Ed7f2c481"
+        "cursorPosition": "137,217",
+        "scrollLine": "134",
+        "last_setup_crc32": "DF09626Ee0ed0b3d"
     },
     "folds": "",
-    "lastKnownWriteTime": 1632459453,
+    "lastKnownWriteTime": 1632715623,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1632461168213,
+    "last_content_update": 1632715623695,
     "read_only": false,
     "read_only_alternatives": []
 }

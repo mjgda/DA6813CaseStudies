@@ -6,11 +6,13 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(caret)
+library(readxl)
+#library(caret)
 library(Boruta)
 library(Rcpp)
 library(InformationValue)
-setwd("~/GitHub/DA6813CaseStudies")
+library(e1071)
+setwd("~/GitHub/DA6813CaseStudies/Case2")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies")
@@ -19,54 +21,126 @@ setwd("~/GitHub/DA6813CaseStudies")
 
 ```{r readprepare, include=F}
 set.seed(12345)
-bank<-read.csv('bank-additional.csv',sep=";",stringsAsFactors = T)
-sum(is.na(bank))
-#duration in column 11
-bank<-bank[-11]
+bbtrain<-read_excel('BBBC-Train.xlsx')
+bbtest<-read_excel('BBBC-Test.xlsx')
+bbtrain$Choice<-as.factor(bbtrain$Choice)
+bbtest$Choice<-as.factor(bbtest$Choice)
+str(bbtrain)
+#remove the index column
+bbtrain<-bbtrain[-1]
+bbtest<-bbtest[-1]
 
-#replace month abbreviations with numbers
-monthord<-as.character(bank$month)
-mn<-c('jan','feb','mar','apr','may','jun','jul',
-  'aug','sep','oct','nov','dec')
-md<-c(1,2,3,4,5,6,7,8,9,10,11,12)
-monthord[monthord %in% mn] <- md[match(monthord, mn)]
-bank$month<-as.factor(monthord)
-
-#replace day of week abbreviations with numbers
-weekord<-as.character(bank$day_of_week)
-mn<-c('mon','tue','wed','thu','fri','sat','sun')
-md<-c(1,2,3,4,5,6,7)
-weekord[weekord %in% mn] <- md[match(weekord, mn)]
-bank$day_of_week<-as.factor(weekord)
-
-#reverse levels so "yes" is returned as the positive class to the caret model
-bank$y <- factor(bank$y, levels=rev(levels(bank$y)))
+#view the distribution of target variable
+table(bbtrain$Choice)
+```
 
 
-#scale and remove variables with near-zero variance(which turns out to be pdays)
+```{r readprepare, include=F}
 
-params<-preProcess(bank,method=c("scale","center","nzv"))
-scaledbank<-predict(params,bank)
+#balance the target classes
+bbtrain<-upSample(x=bbtrain[,-ncol(bbtrain)],y=bbtrain$Choice)
 
-#separate the data into train and test sets
+#lose extraneous class variable from upsampling
+bbtrain<-bbtrain[-11]
 
-train<-sample(nrow(scaledbank),0.7*nrow(scaledbank))
-banktrain<-scaledbank[train,]
-banktest<-scaledbank[-train,]
+bbtrain$Choice <- factor(bbtrain$Choice, levels=rev(levels(bbtrain$Choice)))
 
-#balance the target classes so the 
-banktrain<-upSample(x=banktrain[,-ncol(banktrain)],y=banktrain$y)
+
+bbtest$Choice <- factor(bbtest$Choice, levels=rev(levels(bbtest$Choice)))
+
+```
+
+```{r, echo=F}
+boruta_var_imp_output=Boruta(Choice~.,data=bbtrain,doTrace=1)
+boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
+
+
+
+boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
+# Variable Importance Scores
+boruta_imps <- attStats(boruta_roug_fix_mod)
+boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
+boruta_imps2[order(-boruta_imps2$meanImp), ]
+
+plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")  
 
 ```
 
 
+```{r}
+
+log<-glm(Choice~.-First_purchase,data=bbtrain,family=binomial)
+
+
+
+tunedsvm=tune(svm,Choice~.,data=bbtrain,kernel ="linear",ranges=list(cost=c(0.001, 0.01, 0.1, 1,5,10,100)))
+
+svm<-tunedsvm$best.model
+
+
+
+summary(log)
+summary(svm)
+
+bbtrain$Choice<-as.numeric(as.character(bbtrain$Choice))
+lm<-glm(Choice~.,data=bbtrain,family=gaussian)
+
+summary(lm)
+```
+
+
+
+```{r}
+
+predlog<-predict(log,bbtest,type="response")
+predsvm<-predict(svm,bbtest)
+
+bbtest$Choice<-as.numeric(as.character(bbtest$Choice))
+predlm<-predict(lm,bbtest)
+
+predlog<-as.factor(ifelse(predlog>0.5,1,0))
+predlm<-as.factor(ifelse(predlm>0.5,1,0))
+
+```
+
+```{r echo=F}
+
+bbtest$Choice<-as.factor(bbtest$Choice)
+
+print(caret::confusionMatrix(predlog,bbtest$Choice))
+cat("\n")
+
+print(caret::confusionMatrix(predsvm,bbtest$Choice))
+cat("\n")
+
+print(caret::confusionMatrix(predlm,bbtest$Choice))
+cat("\n")
+
+
+```
+
 ### I - Executive Summary
 
 
+```{r}
+str(bbtrain)
+```
 
 
 ### II - The Problem
 
+The Bookbinders Book Club is a specialty book distributor that is seeking to survive in an business environment increasingly dominated by superstores like Amazon that are able to leverage economies of scale to out-compete book clubs and smaller retail stores. In order to be more competitive, BBBC has collected data on its customers and plans to use that data to identify the characteristics of the individuals that are most likely to buy a book when mailed a specialty brochure.
+
+The data they have on their customers is primarily numeric data relating to how many books the customer has bought from different categories such as Cooking, Art, etc.
+
+They have specified that they want to find the most predictively useful model out of the following options: logistic regression, linear regression, and support vector machine.
+
+We will show how we evaluated the three models and determined the top performer, and compare the profitability of using that model to determine customers to send mailers vs sending mailers to the entire customer base.
+
+
+```{r}
+#cost is .65 per mail sent, book cost with overhead costs 15*1.45 and selling price is 31.95
+```
 
 ## III - Review of Related Literature
 

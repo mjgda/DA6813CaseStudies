@@ -1,6 +1,0 @@
-"0",""
-"0","#balance the target classes"
-"0","bbtrain<-upSample(x=bbtrain[,-ncol(bbtrain)],y=bbtrain$Choice)"
-"0","bbtrain$Choice<-as.numeric(as.character(bbtrain$Choice))"
-"0",""
-"0",""
