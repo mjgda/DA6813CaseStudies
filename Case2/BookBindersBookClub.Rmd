@@ -7,7 +7,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readxl)
-#library(caret)
+library(caret)
 library(Boruta)
 library(Rcpp)
 library(InformationValue)
@@ -19,50 +19,59 @@ setwd("~/GitHub/DA6813CaseStudies/Case2")
 ```
 
 
-```{r readprepare, include=F}
+```{r readprepare}
 set.seed(12345)
 bbtrain<-read_excel('BBBC-Train.xlsx')
 bbtest<-read_excel('BBBC-Test.xlsx')
 bbtrain$Choice<-as.factor(bbtrain$Choice)
 bbtest$Choice<-as.factor(bbtest$Choice)
 str(bbtrain)
+str(bbtest)
 #remove the index column
 bbtrain<-bbtrain[-1]
 bbtest<-bbtest[-1]
 
 #view the distribution of target variable
+plot(bbtrain$Choice)
+```
+```{r}
 table(bbtrain$Choice)
 ```
 
 
-```{r readprepare, include=F}
+```{r readprepare}
 
 #balance the target classes
-bbtrain<-upSample(x=bbtrain[,-ncol(bbtrain)],y=bbtrain$Choice)
+bbtrain<-upSample(x=bbtrain[,2:ncol(bbtrain)],y=bbtrain$Choice)
 
 #lose extraneous class variable from upsampling
-bbtrain<-bbtrain[-11]
+#bbtrain<-bbtrain[-11]
 
-bbtrain$Choice <- factor(bbtrain$Choice, levels=rev(levels(bbtrain$Choice)))
+bbtrain$Choice <- factor(bbtrain$Class, levels=rev(levels(bbtrain$Class)))
+bbtrain$Class<-NULL
 
-
-bbtest$Choice <- factor(bbtest$Choice, levels=rev(levels(bbtest$Choice)))
+#bbtest$Choice <- factor(bbtest$Choice, levels=rev(levels(bbtest$Choice)))
 
 ```
 
+```{r}
+str(bbtrain)
+```
+
+
 ```{r, echo=F}
-boruta_var_imp_output=Boruta(Choice~.,data=bbtrain,doTrace=1)
-boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
+#boruta_var_imp_output=Boruta(Choice~.,data=bbtrain,doTrace=1)
+#boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
 
 
 
-boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
-# Variable Importance Scores
-boruta_imps <- attStats(boruta_roug_fix_mod)
-boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
-boruta_imps2[order(-boruta_imps2$meanImp), ]
+#boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
+# Variable Importance Scores#
+#boruta_imps <- attStats(boruta_roug_fix_mod)
+#boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
+#boruta_imps2[order(-boruta_imps2$meanImp), ]
 
-plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")  
+#plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")  
 
 ```
 
@@ -73,7 +82,7 @@ log<-glm(Choice~.-First_purchase,data=bbtrain,family=binomial)
 
 
 
-tunedsvm=tune(svm,Choice~.,data=bbtrain,kernel ="linear",ranges=list(cost=c(0.001, 0.01, 0.1, 1,5,10,100)))
+tunedsvm=tune(svm,Choice~.,data=bbtrain,kernel ="linear",ranges=list(cost=c( 0.001, 0.01, 1,5)))
 
 svm<-tunedsvm$best.model
 
@@ -95,17 +104,23 @@ summary(lm)
 predlog<-predict(log,bbtest,type="response")
 predsvm<-predict(svm,bbtest)
 
+
 bbtest$Choice<-as.numeric(as.character(bbtest$Choice))
 predlm<-predict(lm,bbtest)
 
-predlog<-as.factor(ifelse(predlog>0.5,1,0))
+
+
+predlog<-as.factor(ifelse(predlog>0.5,0,1))
 predlm<-as.factor(ifelse(predlm>0.5,1,0))
 
+predlm<-factor(predlm,levels=rev(levels(predlm)))
+predlog<-factor(predlog,levels=rev(levels(predlog)))
 ```
 
 ```{r echo=F}
 
 bbtest$Choice<-as.factor(bbtest$Choice)
+bbtest$Choice<-factor(bbtest$Choice,levels=rev(levels(bbtest$Choice)))
 
 print(caret::confusionMatrix(predlog,bbtest$Choice))
 cat("\n")
@@ -117,6 +132,10 @@ print(caret::confusionMatrix(predlm,bbtest$Choice))
 cat("\n")
 
 
+```
+```{r}
+str(predlog)
+str(bbtest$Choice)
 ```
 
 ### I - Executive Summary
@@ -133,7 +152,7 @@ The Bookbinders Book Club is a specialty book distributor that is seeking to sur
 
 The data they have on their customers is primarily numeric data relating to how many books the customer has bought from different categories such as Cooking, Art, etc.
 
-They have specified that they want to find the most predictively useful model out of the following options: logistic regression, linear regression, and support vector machine.
+They have specified that they want to find the most useful model out of the following options: logistic regression, linear regression, and support vector machine.
 
 We will show how we evaluated the three models and determined the top performer, and compare the profitability of using that model to determine customers to send mailers vs sending mailers to the entire customer base.
 
