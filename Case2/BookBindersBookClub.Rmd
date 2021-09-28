@@ -36,6 +36,8 @@ plot(bbtrain$Choice)
 ```
 ```{r}
 table(bbtrain$Choice)
+
+plot(bbtrain$Choice)
 ```
 
 
@@ -54,8 +56,12 @@ bbtrain$Class<-NULL
 
 ```
 
+
 ```{r}
 str(bbtrain)
+
+plot(bbtrain$Choice)
+
 ```
 
 
@@ -116,6 +122,11 @@ predlm<-as.factor(ifelse(predlm>0.5,1,0))
 predlm<-factor(predlm,levels=rev(levels(predlm)))
 predlog<-factor(predlog,levels=rev(levels(predlog)))
 ```
+
+```{r}
+
+```
+
 
 ```{r echo=F}
 
