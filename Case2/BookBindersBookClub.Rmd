@@ -34,11 +34,7 @@ bbtest<-bbtest[-1]
 #view the distribution of target variable
 plot(bbtrain$Choice)
 ```
-```{r}
-table(bbtrain$Choice)
 
-plot(bbtrain$Choice)
-```
 
 
 ```{r readprepare}
@@ -51,14 +47,6 @@ bbtrain<-upSample(x=bbtrain[,2:ncol(bbtrain)],y=bbtrain$Choice)
 
 bbtrain$Choice <- factor(bbtrain$Class, levels=rev(levels(bbtrain$Class)))
 bbtrain$Class<-NULL
-
-#bbtest$Choice <- factor(bbtest$Choice, levels=rev(levels(bbtest$Choice)))
-
-```
-
-
-```{r}
-str(bbtrain)
 
 plot(bbtrain$Choice)
 
@@ -144,17 +132,12 @@ cat("\n")
 
 
 ```
-```{r}
-str(predlog)
-str(bbtest$Choice)
-```
+
 
 ### I - Executive Summary
 
 
-```{r}
-str(bbtrain)
-```
+
 
 
 ### II - The Problem
@@ -170,7 +153,39 @@ We will show how we evaluated the three models and determined the top performer,
 
 ```{r}
 #cost is .65 per mail sent, book cost with overhead costs 15*1.45 and selling price is 31.95
+#The following assumes that Midwest will have a similar buying population as the test data
+
+mailcost<-0.65
+profit<-31.95-(15*1.45)
+Midwestbase<-50000
+buyerfraction<-sum(bbtest$Choice==1)/length(bbtest$Choice)
+
+blanketprofit<-((Midwestbase*buyerfraction)*profit)-(Midwestbase*mailcost)
+
+bestpredictor<-predlog
+#percentage of buy predictions made by model and percentage of buy predictions that are correct
+detectionprevalence<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[10])
+pospredvalue<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[3])
+
+targetedprofit<-((Midwestbase*detectionprevalence*pospredvalue)*profit)-(Midwestbase*detectionprevalence*mailcost)
+
+outperformance<-(targetedprofit-blanketprofit)*100/blanketprofit
+
+
+print(blanketprofit)
+print(targetedprofit)
+paste(round(outperformance, 2), "%", sep="")
+
+
 ```
+
+
+
+```{r}
+
+
+```
+
 
 ## III - Review of Related Literature
 
