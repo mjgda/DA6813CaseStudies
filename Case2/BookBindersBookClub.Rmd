@@ -121,7 +121,7 @@ summary(svm_rose)
 ```
 ```{r}
 bbtrain$Choice<-as.numeric(as.character(bbtrain$Choice))
-lm<-glm(Choice~.,data=bbtrain,family=gaussian)
+lm<-glm(Choice~.,data=bbtrain.over,family=gaussian)
 
 summary(lm)
 ```
@@ -247,36 +247,7 @@ They have specified that they want to find the most useful model out of the foll
 We will show how we evaluated the three models and determined the top performer, and compare the profitability of using that model to determine customers to send mailers vs sending mailers to the entire customer base.
 
 
-```{r}
-#cost is .65 per mail sent, book cost with overhead costs 15*1.45 and selling price is 31.95
-#The following assumes that Midwest will have a similar buying population as the test data
 
-mailcost<-0.65
-profit<-31.95-(15*1.45)
-Midwestbase<-50000
-buyerfraction<-sum(bbtest$Choice==1)/length(bbtest$Choice)
-
-blanketprofit<-((Midwestbase*buyerfraction)*profit)-(Midwestbase*mailcost)
-
-#bestpredictor<-factor(predsvm,levels=rev(levels(predsvm)))
-
-bestpredictor<-predsvm.over
-
-#percentage of buy predictions made by model and percentage of buy predictions that are correct
-detectionprevalence<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[10])
-pospredvalue<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[3])
-
-targetedprofit<-((Midwestbase*detectionprevalence*pospredvalue)*profit)-(Midwestbase*detectionprevalence*mailcost)
-
-outperformance<-(targetedprofit-blanketprofit)*100/blanketprofit
-
-
-print(blanketprofit)
-print(targetedprofit)
-paste(round(outperformance, 2), "%", sep="")
-
-
-```
 
 
 
@@ -310,6 +281,43 @@ plot(bbtrain.rose$Choice,main="Synthetically Generated Dataset")
 
 ### VII - Conclusions
 
+```{r}
+#cost is .65 per mail sent, book cost is 15 with overhead of 45% of cost, and selling price is 31.95
+#The following assumes that Midwest will have a similar buying population as the test data
+
+
+predictions<-list(predlm,predlog,predlog_over,predlog_rose,predsvm,predsvm.over,predsvm.rose)
+predlabel<-c("Balanced Linear Regression","Raw Logit","Balanced Logit","Synthetic Logit","Raw SVM","Balanced SVM","Synthetic SVM")
+
+mailcost<-0.65
+profit<-31.95-(15*1.45)
+Midwestbase<-50000
+buyerfraction<-sum(bbtest$Choice==1)/length(bbtest$Choice)
+
+blanketprofit<-((Midwestbase*buyerfraction)*profit)-(Midwestbase*mailcost)
+
+print("Profitability using Model to select mailers, vs mailing every Midwest customer")
+print(paste("Profit mailing everyone: ","$",round(blanketprofit,2),sep=""))
+
+
+for(i in 1:length(predictions)){
+
+bestpredictor<-unlist(predictions[i])
+
+#percentage of buy predictions made by model and percentage of buy predictions that are correct
+detectionprevalence<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[10])
+pospredvalue<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[3])
+
+targetedprofit<-((Midwestbase*detectionprevalence*pospredvalue)*profit)-(Midwestbase*detectionprevalence*mailcost)
+
+outperformance<-(targetedprofit-blanketprofit)*100/blanketprofit
+
+
+print(predlabel[i])
+print(paste(round(outperformance, 2), "%", sep=""))
+}
+
+```
 
 ### Appendix
 
