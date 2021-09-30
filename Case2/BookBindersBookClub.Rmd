@@ -257,7 +257,7 @@ We will show how we evaluated the three models and determined the top performer,
 
 
 ### V - Data
-The dataset to be used is the sample of Bookbinders Book Club customers from Pennsylvania, New York, and Ohio  Which contains the details of whether the customers are willing to buy the book "The Art of Florescence" or not through direct mailing the brocher. 
+The dataset to be used is the sample of Bookbinders Book Club customers from Pennsylvania, New York, and Ohio  Which contains the details of whether the customers are willing to buy the book "The Art of Florescence" or not through direct mailing the brochure. 
 
 Along the 1600 records in the dataset, 400 members who bought the book and 1200 who didn't bought the book, which ends up in a imbalanced dataset. As part of this Case study we have tried a Oversampling and Synthetically Data Generation sampling in order to increase the prediction of customers who will buy the book.
 
@@ -266,6 +266,7 @@ Along the 1600 records in the dataset, 400 members who bought the book and 1200 
 **Synthetic Data Generation:**Instead of replicating and adding the observations from the minority class, it overcome imbalances by generates artificial data based on feature space (rather than data space) similarities from minority samples. It is also a type of oversampling technique.
 
 ```{r, echo=FALSE}
+bbtrain$Choice<-as.factor(as.character(bbtrain$Choice))
 plot(bbtrain$Choice,main="Unbalanced Dataset")
 
 ```
@@ -328,6 +329,9 @@ print(paste(round(outperformance, 2), "%", sep=""))
 
 
 
+```{r}
+
+```
 
 #### Training different models
 
