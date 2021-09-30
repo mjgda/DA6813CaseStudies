@@ -29,21 +29,21 @@ library(InformationValue)
 library(e1071)
 library(ROSE)
 library(pROC)
-#setwd("~/GitHub/DA6813CaseStudies/Case2")
+setwd("~/GitHub/DA6813CaseStudies/Case2")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
-setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
+#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
 ```
 
 
-```{r readprepare, include=FALSE}
+```{r readprepare}
 set.seed(12345)
 bbtrain<-read_excel('BBBC-Train.xlsx')
 bbtest<-read_excel('BBBC-Test.xlsx')
 bbtrain$Choice<-as.factor(bbtrain$Choice)
 bbtest$Choice<-as.factor(bbtest$Choice)
-str(bbtrain)
-str(bbtest)
+#str(bbtrain)
+#str(bbtest)
 #remove the index column
 bbtrain<-bbtrain[-1]
 bbtest<-bbtest[-1]
@@ -54,11 +54,11 @@ plot(bbtrain$Choice)
 ```
 
 
-```{r preprocess,include=FALSE}
+```{r preprocess}
 
 #balance the target classes
 bbtrain.over<-upSample(x=bbtrain[,2:ncol(bbtrain)],y=bbtrain$Choice)
-bbtrain.over$Choice <- factor(bbtrain.over$Class, levels=rev(levels(bbtrain.over$Class)))
+bbtrain.over$Choice <- factor(bbtrain.over$Class)
 bbtrain.over$Class<-NULL
 
 bbtrain.rose=ROSE(Choice~.,data=bbtrain,seed=12345)$data
@@ -86,7 +86,7 @@ plot(bbtrain.rose$Choice)
 
 
 #Logistic Regression
-```{r,models,include=F}
+```{r,models}
 # Train the unbalanced dataset for logistic regression model
 log<-glm(Choice~.-First_purchase,data=bbtrain,family=binomial)
 summary(log)
@@ -137,31 +137,28 @@ predsvm.over<-predict(svm_over,bbtest)
 predsvm.rose<-predict(svm_over,bbtest)
 
 
-bbtest$Choice<-as.numeric(as.character(bbtest$Choice))
 predlm<-predict(lm,bbtest)
-
-
 
 
 predlm<-as.factor(ifelse(predlm>0.5,1,0))
 
-predlm<-factor(predlm,levels=rev(levels(predlm)))
+
 
 ```
 
 ```{r,Prediction,include=F}
 # Prediction using Logistic Regression with unbalanced Dataset
 predlog<-predict(log,bbtest,type="response")
-predlog<-as.factor(ifelse(predlog>0.5,0,1))
-predlog<-factor(predlog,levels=rev(levels(predlog)))
+predlog<-as.factor(ifelse(predlog>0.5,1,0))
+
 # Prediction using Logistic Regression with Over sampled Dataset
 predlog_over<-predict(log_over,bbtest,type="response")
-predlog_over<-as.factor(ifelse(predlog_over>0.5,0,1))
-predlog_over<-factor(predlog_over,levels=rev(levels(predlog_over)))
+predlog_over<-as.factor(ifelse(predlog_over>0.5,1,0))
+
 # Prediction using Logistic Regression with Synthetically Generated Dataset
 predlog_rose<-predict(log_rose,bbtest,type="response")
-predlog_rose<-as.factor(ifelse(predlog_rose>0.5,0,1))
-predlog_rose<-factor(predlog_rose,levels=rev(levels(predlog_rose)))
+predlog_rose<-as.factor(ifelse(predlog_rose>0.5,1,0))
+
 ```
 
 
@@ -169,7 +166,18 @@ predlog_rose<-factor(predlog_rose,levels=rev(levels(predlog_rose)))
 ```{r echo=F}
 
 bbtest$Choice<-as.factor(bbtest$Choice)
+
+
+#Prediction and test are all ordered so 0 is the positive value, so reverse them here 
 bbtest$Choice<-factor(bbtest$Choice,levels=rev(levels(bbtest$Choice)))
+predlog<-factor(predlog,levels=rev(levels(predlog)))
+predlog_over<-factor(predlog_over,levels=rev(levels(predlog_over)))
+predlog_rose<-factor(predlog_rose,levels=rev(levels(predlog_rose)))
+predsvm<-factor(predsvm,levels=rev(levels(predsvm)))
+predsvm.over<-factor(predsvm.over,levels=rev(levels(predsvm.over)))
+predsvm.rose<-factor(predsvm.rose,levels=rev(levels(predsvm.rose)))
+predlm<-factor(predlm,levels=rev(levels(predlm)))
+
 
 print(caret::confusionMatrix(predlog,bbtest$Choice))
 cat("\n")
@@ -201,7 +209,7 @@ roc.curve(bbtest$Choice,predlog_rose,add.roc = TRUE,col="brown")
 
 
 ```{r}
-print(caret::confusionMatrix(as.factor(predsvm),bbtest$Choice))
+print(caret::confusionMatrix(predsvm,bbtest$Choice))
 cat("\n")
 
 print(caret::confusionMatrix(predsvm.over,bbtest$Choice))
@@ -250,7 +258,10 @@ buyerfraction<-sum(bbtest$Choice==1)/length(bbtest$Choice)
 
 blanketprofit<-((Midwestbase*buyerfraction)*profit)-(Midwestbase*mailcost)
 
-bestpredictor<-predlog
+#bestpredictor<-factor(predsvm,levels=rev(levels(predsvm)))
+
+bestpredictor<-predsvm.over
+
 #percentage of buy predictions made by model and percentage of buy predictions that are correct
 detectionprevalence<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[10])
 pospredvalue<-as.numeric(caret::confusionMatrix(bestpredictor,bbtest$Choice)$byClass[3])
@@ -285,6 +296,7 @@ Along the 1600 records in the dataset, 400 members who bought the book and 1200 
 
 ```{r, echo=FALSE}
 plot(bbtrain$Choice,main="Unbalanced Dataset")
+
 ```
 ```{r,echo=FALSE}
 plot(bbtrain.over$Choice,main="Over-Sampling Dataset")
