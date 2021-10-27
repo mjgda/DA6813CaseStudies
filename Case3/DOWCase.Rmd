@@ -1,0 +1,95 @@
+---
+title: "DOW Jones Index Case"
+author: "Visha Arumugam(vcu526), Michael Grogan(ldl776),Sanyogita Apte(jlh562)"
+date: "October 31, 2021"
+output: html_document
+---
+<style type="text/css">
+
+h1.title {
+  font-size: 38px;
+  text-align: center;
+}
+h4.author { 
+  font-size: 18px;
+  text-align: center;
+}
+h4.date { 
+  font-size: 18px;
+  text-align: center;
+}
+</style>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+library(caret)
+setwd("~/GitHub/DA6813CaseStudies/Case2")
+#setwd("~/MSDA/Fall 2021/GitHub")
+#setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
+#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
+```
+
+```{r}
+DOWdata<-read.table('dow_jones_index.data',sep=",",header=T)
+
+
+for(i in c(4:7,12:13)){
+  DOWdata[[i]]<-as.numeric(gsub('\\$','',DOWdata[[i]]))
+  
+}
+DOWdata$date<-as.Date(DOWdata$date,format ="%m/%d/%Y")
+
+DOWdata$time<-as.numeric(DOWdata$date)
+q1<-unique(DOWdata$date[DOWdata$quarter==1])
+q2<-unique(DOWdata$date[DOWdata$quarter==2])
+
+for(j in list(q1,q2)){
+for(i in 1:length(j)){
+  DOWdata$time[DOWdata$date==j[i]]<-i
+
+}
+}
+
+train<-DOWdata[DOWdata$quarter==1,]
+test<-DOWdata[DOWdata$quarter==2,]
+
+```
+
+```{r}
+str(train)
+
+
+```
+
+```{r}
+c(unique(train$stock))
+```
+
+
+
+
+
+### I - Executive Summary
+
+
+### II - The Problem
+
+
+
+## III - Review of Related Literature
+
+
+## IV - Methodology
+
+
+
+
+
+### V - Data
+
+
+### VI - Findings
+
+
+### Appendix
+
