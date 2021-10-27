@@ -1,0 +1,204 @@
+---
+title: "DOW Jones Index Case"
+author: "Visha Arumugam(vcu526), Michael Grogan(ldl776),Sanyogita Apte(jlh562)"
+date: "October 31, 2021"
+output: html_document
+---
+<style type="text/css">
+
+h1.title {
+  font-size: 38px;
+  text-align: center;
+}
+h4.author { 
+  font-size: 18px;
+  text-align: center;
+}
+h4.date { 
+  font-size: 18px;
+  text-align: center;
+}
+</style>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lubridate)
+library(caret)
+#setwd("~/GitHub/DA6813CaseStudies/Case2")
+#setwd("~/MSDA/Fall 2021/GitHub")
+#setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
+#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
+setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
+```
+
+```{r}
+DOWdata<-read.table('dow_jones_index.data',sep=",",header=T)
+
+
+for(i in c(4:7,12:13)){
+  DOWdata[[i]]<-as.numeric(gsub('\\$','',DOWdata[[i]]))
+  
+}
+DOWdata$date<-as.Date(DOWdata$date,format ="%m/%d/%Y")
+
+DOWdata$time<-as.numeric(DOWdata$date)
+q1<-unique(DOWdata$date[DOWdata$quarter==1])
+q2<-unique(DOWdata$date[DOWdata$quarter==2])
+
+for(j in list(q1,q2)){
+for(i in 1:length(j)){
+  DOWdata$time[DOWdata$date==j[i]]<-i
+
+}
+}
+
+train<-DOWdata[DOWdata$quarter==1,]
+test<-DOWdata[DOWdata$quarter==2,]
+
+```
+
+```{r readprepare, include=FALSE}
+# Load the Dataset 
+Stock_Det = read_csv("dow_jones_index.data")
+str(Stock_Det)
+glimpse(Stock_Det)
+
+# Convert the price into Numberic value
+Stock_Det$open=as.numeric(gsub("\\$","",Stock_Det$open))
+Stock_Det$high=as.numeric(gsub("\\$","",Stock_Det$high))
+Stock_Det$low=as.numeric(gsub("\\$","",Stock_Det$low))
+Stock_Det$close=as.numeric(gsub("\\$","",Stock_Det$close))
+Stock_Det$next_weeks_open=as.numeric(gsub("\\$","",Stock_Det$next_weeks_open))
+Stock_Det$next_weeks_close=as.numeric(gsub("\\$","",Stock_Det$next_weeks_close))
+
+## Convert the date into Date Format
+Stock_Det$date=mdy(Stock_Det$date)
+summary(Stock_Det)
+
+# Check the missing Values and the missing Column
+sum(is.na(Stock_Det))
+names(which(sapply(Stock_Det, anyNA)))
+Stock_symbol=unique(Stock_Det[c("stock")])
+stoc_det_num=subset(Stock_Det,select = -c(stock))
+
+# There Are totally 60 missing values in the data set . The columns which has the missing values are "percent_change_volume_over_last_wk" "previous_weeks_volume" .Each Column has 30 Missing values based on the number of unique stocks. The missing values are due to the fact that the previous week data (December 2010) is not available. The missing values are getting imputed using the Weighted moving average algorithm, which adds more weight to the previous data for imputation 
+imputed_data=na_ma(Stock_Det)
+
+## Normalize the data set
+# The Data Available in the dataset are not not in the same scale. In-order to have an effective analysis We are normalizing the data to be in the same scale.
+params=preProcess(imputed_data,method=c("scale","center","nzv"))
+Scale_stock_det= predict(params,imputed_data)
+
+# Split the data into Train and test
+# Training dataset will contain the stock records for the month January to March. Whereas the testing dataset contains the stock records for the month April to June.
+train_data = subset(Scale_stock_det,(month(date)>=1 & month(date)<=3))
+test_data= subset(Scale_stock_det,(month(date)>=4 & month(date)<=6))
+```
+
+
+```{r  ExploratoryAnalysis, include=FALSE}
+# The data set contains 16 variables, out of which we are going to consider the below variables
+# quarter,date,stock,volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price,percent_return_next_dividend. <Need to have some explanation why we are not considering the other variables>
+
+stock_det_cons=subset(Stock_Det,
+                      select=-c(open,high,low,close,previous_weeks_volume,next_weeks_open,next_weeks_close,days_to_next_dividend))
+
+imputed_stock_det_cons=na_ma(stock_det_cons)
+
+params=preProcess(imputed_stock_det_cons,method=c("scale","center","nzv"))
+Scale_stock_det_cons= predict(params,imputed_stock_det_cons)
+
+train_stock_det_cons = subset(Scale_stock_det_cons,(month(date)>=1 & month(date)<=3))
+test_stock_det_cons= subset(Scale_stock_det_cons,(month(date)>=4 & month(date)<=6))
+
+ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_change_next_weeks_price,color=stock)) +
+  geom_point() +
+  xlab("")
+
+```
+```{r ExploratoryAnalysis, include=FALSE}
+ggplot(data=Scale_stock_det_cons, aes(x=date, y=volume,color=stock)) +
+  geom_point() +
+  xlab("")
+ 
+```
+```{r ExploratoryAnalysis, include=FALSE}
+ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_change_price,color=stock)) +
+  geom_point() +
+  xlab("")
+```
+```{r ExploratoryAnalysis, include=FALSE}
+ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_change_volume_over_last_wk,color=stock)) +
+  geom_point() +
+  xlab("")
+```
+
+```{r ExploratoryAnalysis, include=FALSE}
+ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_return_next_dividend,color=stock)) +
+  geom_point() +
+  xlab("")
+
+## Based on the time series plot on various stocks, it can be inferred that the data follows the stationary pattern over the variables volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price and percent_return_next_dividend
+```
+
+
+```{r}
+y=Scale_stock_det_cons$percent_change_next_weeks_price
+lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of price change for next week")
+```
+```{r}
+y=Scale_stock_det_cons$volume
+lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Lag plot for volumes of stock traded")
+```
+```{r}
+y=Scale_stock_det_cons$percent_change_price
+lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
+```
+```{r}
+y=Scale_stock_det_cons$percent_change_volume_over_last_wk
+lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,
+         main = "Percent change in volume of stocks traded compared to the previous week")
+```
+
+```{r}
+y=Scale_stock_det_cons$percent_return_next_dividend
+lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
+```
+
+```{r}
+str(train)
+
+
+```
+
+```{r}
+c(unique(train$stock))
+```
+
+
+
+
+
+### I - Executive Summary
+
+
+### II - The Problem
+
+
+
+## III - Review of Related Literature
+
+
+## IV - Methodology
+
+
+
+
+
+### V - Data
+
+
+### VI - Findings
+
+
+### Appendix
+
