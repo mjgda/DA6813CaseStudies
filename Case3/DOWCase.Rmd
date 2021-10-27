@@ -140,51 +140,48 @@ ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_return_next_dividend,col
 ## Based on the time series plot on various stocks, it can be inferred that the data follows the stationary pattern over the variables volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price and percent_return_next_dividend
 ```
 ```{r}
-# Execute the linear regression and verify their prediction accuracy
+# Execute the linear regression and Check whether any autocorrealtion exists between the time period
 control_var=trainControl(method="cv", number=10)
 set.seed(100)
 stock_lm <- train(percent_change_next_weeks_price ~ date+stock+volume+percent_change_price+percent_change_volume_over_last_wk+percent_return_next_dividend,
-                  data = train_stock_det_cons, trControl = control_var, method = "lm")
+                  data = Scale_stock_det_cons, trControl = control_var, method = "lm")
 ```
 ```{r}
 stock_lm$results
-stock_lm$finalModel
-```
-```{r}
-stock_lm_pred=predict(stock_lm,test_stock_det_cons)
 ```
 ```{r}
 stock_lm_res=resid(stock_lm)
 ```
 ```{r}
-plot(x=train_stock_det_cons$date,y=stock_lm_res, ylab="Residuals", xlab="Date") 
+plot(x=Scale_stock_det_cons$date,y=stock_lm_res, ylab="Residuals", xlab="Date") 
 abline(0,0)
 ```
 
 
 ```{r}
 y=Scale_stock_det_cons$percent_change_next_weeks_price
-lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of price change for next week")
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of price change for next week")
 ```
 ```{r}
 y=Scale_stock_det_cons$volume
-lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Lag plot for volumes of stock traded")
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for volumes of stock traded")
 ```
 ```{r}
 y=Scale_stock_det_cons$percent_change_price
-lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
 ```
 ```{r}
 y=Scale_stock_det_cons$percent_change_volume_over_last_wk
-lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,
          main = "Percent change in volume of stocks traded compared to the previous week")
 ```
 
 ```{r}
 y=Scale_stock_det_cons$percent_return_next_dividend
-lag.plot(y,set.lags = 1:7,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
 ```
 
+**Based on the above lag plots , there exist  auto regressive behavior**
 ```{r}
 str(train)
 
