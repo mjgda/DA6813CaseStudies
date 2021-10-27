@@ -21,13 +21,14 @@ h4.date {
 </style>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(lubridate)
+#Task: Build models to predict stock prices and evaluate risks of stocks. 
+library(Boruta)
 library(caret)
-#setwd("~/GitHub/DA6813CaseStudies/Case2")
+setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
-setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
+#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
 ```
 
 ```{r}
@@ -50,11 +51,93 @@ for(i in 1:length(j)){
 
 }
 }
+DOWdata$next_week_change<-DOWdata$next_weeks_close-DOWdata$next_weeks_open
+#DOWdata<-na.omit(DOWdata)
 
 train<-DOWdata[DOWdata$quarter==1,]
 test<-DOWdata[DOWdata$quarter==2,]
 
+str(DOWdata)
 ```
+
+```{r, echo=F}
+
+boruta_var_imp_output=Boruta(percent_change_next_weeks_price~percent_change_price+percent_change_volume_over_last_wk+time+open+days_to_next_dividend+percent_return_next_dividend+close+high+low,data=na.omit(train),doTrace=1)
+
+boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
+
+
+
+boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
+# Variable Importance Scores
+boruta_imps <- attStats(boruta_roug_fix_mod)
+boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
+boruta_imps2[order(-boruta_imps2$meanImp), ]
+
+
+plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")  
+
+```
+
+
+```{r}
+model<-glm(percent_change_next_weeks_price~time+time:percent_return_next_dividend+close,family="gaussian",data=train)
+summary(model)
+plot(model)
+```
+
+```{r}
+model<-glm(percent_change_next_weeks_price~percent_change_price+time+open+percent_return_next_dividend+close+high+low,family="gaussian",data=train)
+summary(model)
+
+
+```
+
+
+```{r}
+for(i in unique(test$stock)){
+target<-test[test$stock==i,]
+prediction<-predict(model,target)
+modsum<-summary(model)
+trainmse<-mean(modsum$deviance.resid^2)
+testmse<-mean((prediction-target$percent_change_next_weeks_price)^2)
+print(trainmse)
+print(testmse)
+
+plot(target$time,target$percent_change_next_weeks_price,main=i)
+lines(prediction,col="blue")
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r readprepare, include=FALSE}
 # Load the Dataset 
@@ -81,12 +164,12 @@ Stock_symbol=unique(Stock_Det[c("stock")])
 stoc_det_num=subset(Stock_Det,select = -c(stock))
 
 # There Are totally 60 missing values in the data set . The columns which has the missing values are "percent_change_volume_over_last_wk" "previous_weeks_volume" .Each Column has 30 Missing values based on the number of unique stocks. The missing values are due to the fact that the previous week data (December 2010) is not available. The missing values are getting imputed using the Weighted moving average algorithm, which adds more weight to the previous data for imputation 
-imputed_data=na_ma(Stock_Det)
+#imputed_data=na_ma(Stock_Det)
 
 ## Normalize the data set
 # The Data Available in the dataset are not not in the same scale. In-order to have an effective analysis We are normalizing the data to be in the same scale.
-params=preProcess(imputed_data,method=c("scale","center","nzv"))
-Scale_stock_det= predict(params,imputed_data)
+#params=preProcess(imputed_data,method=c("scale","center","nzv"))
+Scale_stock_det= predict(params,Stock_Det)
 
 # Split the data into Train and test
 # Training dataset will contain the stock records for the month January to March. Whereas the testing dataset contains the stock records for the month April to June.
@@ -95,14 +178,15 @@ test_data= subset(Scale_stock_det,(month(date)>=4 & month(date)<=6))
 ```
 
 
-```{r  ExploratoryAnalysis, include=FALSE}
+```{r  ExploratoryAnalysis}
 # The data set contains 16 variables, out of which we are going to consider the below variables
 # quarter,date,stock,volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price,percent_return_next_dividend. <Need to have some explanation why we are not considering the other variables>
 
 stock_det_cons=subset(Stock_Det,
                       select=-c(open,high,low,close,previous_weeks_volume,next_weeks_open,next_weeks_close,days_to_next_dividend))
 
-imputed_stock_det_cons=na_ma(stock_det_cons)
+#imputed_stock_det_cons=na_ma(stock_det_cons)
+imputed_stock_det_cons=stock_det_cons
 
 params=preProcess(imputed_stock_det_cons,method=c("scale","center","nzv"))
 Scale_stock_det_cons= predict(params,imputed_stock_det_cons)
@@ -115,24 +199,28 @@ ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_change_next_weeks_price,
   xlab("")
 
 ```
-```{r ExploratoryAnalysis, include=FALSE}
+
+
+```{r ExploratoryAnalysis}
 ggplot(data=Scale_stock_det_cons, aes(x=date, y=volume,color=stock)) +
   geom_point() +
   xlab("")
  
 ```
-```{r ExploratoryAnalysis, include=FALSE}
+
+
+```{r ExploratoryAnalysis}
 ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_change_price,color=stock)) +
   geom_point() +
   xlab("")
 ```
-```{r ExploratoryAnalysis, include=FALSE}
+```{r ExploratoryAnalysis}
 ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_change_volume_over_last_wk,color=stock)) +
   geom_point() +
   xlab("")
 ```
 
-```{r ExploratoryAnalysis, include=FALSE}
+```{r ExploratoryAnalysis}
 ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_return_next_dividend,color=stock)) +
   geom_point() +
   xlab("")
