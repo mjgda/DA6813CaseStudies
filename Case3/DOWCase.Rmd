@@ -139,6 +139,27 @@ ggplot(data=Scale_stock_det_cons, aes(x=date, y=percent_return_next_dividend,col
 
 ## Based on the time series plot on various stocks, it can be inferred that the data follows the stationary pattern over the variables volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price and percent_return_next_dividend
 ```
+```{r}
+# Execute the linear regression and verify their prediction accuracy
+control_var=trainControl(method="cv", number=10)
+set.seed(100)
+stock_lm <- train(percent_change_next_weeks_price ~ date+stock+volume+percent_change_price+percent_change_volume_over_last_wk+percent_return_next_dividend,
+                  data = train_stock_det_cons, trControl = control_var, method = "lm")
+```
+```{r}
+stock_lm$results
+stock_lm$finalModel
+```
+```{r}
+stock_lm_pred=predict(stock_lm,test_stock_det_cons)
+```
+```{r}
+stock_lm_res=resid(stock_lm)
+```
+```{r}
+plot(x=train_stock_det_cons$date,y=stock_lm_res, ylab="Residuals", xlab="Date") 
+abline(0,0)
+```
 
 
 ```{r}
