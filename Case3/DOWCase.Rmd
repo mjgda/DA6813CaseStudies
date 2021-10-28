@@ -66,8 +66,6 @@ for(i in 1:length(j)){
 }
 }
 
-
-
 #params<-preProcess(DOWdata[c(-1,-17)],method=c("scale","nzv"))
 #DOWdata[c(-1,-17)]<-predict(params,DOWdata[c(-1,-17)])
 
@@ -83,20 +81,23 @@ str(train)
 
 ```{r}
 #writing formulas
-targety<-"percent_change_next_weeks_price"
 
+#static formulas
+targety<-"percent_change_next_weeks_price"
 fvar<-c("percent_change_price","percent_change_volume_over_last_wk","time",
         "open","days_to_next_dividend","percent_return_next_dividend","close",
         "high","low","stock","previous_weeks_volume","volume")
-ovar<-c("percent_change_price","percent_change_volume_over_last_wk",
-        "days_to_next_dividend","percent_return_next_dividend")
-svar<-c("time","time:percent_return_next_dividend","close","stock")
-
-
-svarsvm<-c("time","time:percent_return_next_dividend","close")
 fvarsvm<-c("percent_change_price","percent_change_volume_over_last_wk","time",
         "open","days_to_next_dividend","percent_return_next_dividend","close",
         "high","low","previous_weeks_volume","volume")
+ovar<-c("percent_change_price","percent_change_volume_over_last_wk",
+        "days_to_next_dividend","percent_return_next_dividend")
+
+
+#optimized formulas, svm needs to have stock excluded because it can't calculate without variation
+svar<-c("time","time:percent_return_next_dividend","close","stock")
+svarsvm<-c("time","time:percent_return_next_dividend","close")
+
 
 selectformula<-as.formula(paste(targety,paste(svar,collapse="+"),sep="~"))
 fullformula<-as.formula(paste(targety,paste(fvar,collapse="+"),sep="~"))
@@ -121,7 +122,7 @@ fullformulasvm<-as.formula(paste(targety,paste(fvarsvm,collapse="+"),sep="~"))
 
 
 ```{r}
-##
+## Train models
 selectlm<-glm(formula=selectformula,family="gaussian",data=train)
 fulllm<-glm(formula=fullformula,family="gaussian",data=train)
 originallm<-glm(formula=originalformula,family="gaussian",data=train)
@@ -137,10 +138,6 @@ originaltree<-rpart(formula=originalformula,method = "anova",data=train)
 
 ```
 
-```{r}
-prediction<-predict(fullsvm,test)
-head(prediction)
-```
 
 
 ```{r}
@@ -149,6 +146,7 @@ head(prediction)
 #Due to some stocks having more outliers than average, the training data can yield even worse predictions
 
 model<-originaltree
+
 for(i in unique(test$stock)){
 target<-test[test$stock==i,]
 prediction<-predict(model,target)
