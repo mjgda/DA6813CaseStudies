@@ -37,6 +37,8 @@ library(caret)
 library(imputeTS)
 library(e1071)
 library(rpart)
+library(tseries)
+library(quantmod)
 
 setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/GitHub")
@@ -44,6 +46,11 @@ setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
 ```
+
+
+
+
+
 
 ```{r}
 DOWdata<-read.table('dow_jones_index.data',sep=",",header=T)
@@ -76,6 +83,22 @@ train<-na_ma(train)
 test<-na_ma(test)
 
 str(train)
+```
+
+```{r}
+#index for CAPM
+DOWIndex <- read.csv("DOW_2011Q1Q2.csv", header=TRUE, sep=",") 
+
+closedf<-as.data.frame.matrix(xtabs(~date+stock,DOWdata))
+for(i in unique(DOWdata$stock)){
+closedf[i]<-DOWdata$close[DOWdata$stock==i]
+}
+
+closedf$DOW<-DOWIndex[,5]
+
+Returns<-na.omit(apply(closedf[-1],2,Delt))
+boxplot(Returns,main="Expected Return", xlab="Stock Picks", ylab="Return",las=2)
+
 ```
 
 
@@ -169,6 +192,7 @@ lines(prediction,col="blue")
 
 }
 ```
+
 
 
 
