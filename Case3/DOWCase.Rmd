@@ -96,10 +96,21 @@ closedf[i]<-DOWdata$close[DOWdata$stock==i]
 
 closedf$DOW<-DOWIndex[,5]
 
-Returns<-na.omit(apply(closedf[-1],2,Delt))
+Returns<-na.omit(apply(closedf,2,Delt))
 boxplot(Returns,main="Expected Return", xlab="Stock Picks", ylab="Return",las=2)
 
+CAPM<-data.frame(matrix(ncol = 2, nrow = 0))
+
+
+for(i in unique(DOWdata$stock)){
+betta<-summary(lm(as.formula(paste(i,"DOW",sep="~")),as.data.frame(Returns)))
+CAPM<-rbind(CAPM,c(i,betta$coefficients[2,1]))
+}
+colnames(CAPM) <- c("Stock","Beta")
+CAPM
 ```
+
+
 
 
 ```{r}
