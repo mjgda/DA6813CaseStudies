@@ -40,11 +40,11 @@ library(rpart)
 library(tseries)
 library(quantmod)
 
-setwd("~/GitHub/DA6813CaseStudies/Case3")
+#setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
-#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
+setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
 ```
 
 
@@ -67,7 +67,9 @@ q1<-unique(DOWdata$date[DOWdata$quarter==1])
 q2<-unique(DOWdata$date[DOWdata$quarter==2])
 
 for(j in list(q1,q2)){
+  print(j)
 for(i in 1:length(j)){
+  print(i)
   DOWdata$time[DOWdata$date==j[i]]<-i
 
 }
@@ -88,7 +90,6 @@ str(train)
 ```{r}
 #index for CAPM
 DOWIndex <- read.csv("DOW_2011Q1Q2.csv", header=TRUE, sep=",") 
-
 closedf<-as.data.frame.matrix(xtabs(~date+stock,DOWdata))
 for(i in unique(DOWdata$stock)){
 closedf[i]<-DOWdata$close[DOWdata$stock==i]
@@ -100,7 +101,6 @@ Returns<-na.omit(apply(closedf,2,Delt))
 boxplot(Returns,main="Expected Return", xlab="Stock Picks", ylab="Return",las=2)
 
 CAPM<-data.frame(matrix(ncol = 2, nrow = 0))
-
 
 for(i in unique(DOWdata$stock)){
 betta<-summary(lm(as.formula(paste(i,"DOW",sep="~")),as.data.frame(Returns)))
@@ -139,7 +139,6 @@ originalformula<-as.formula(paste(targety,paste(ovar,collapse="+"),sep="~"))
 
 selectformulasvm<-as.formula(paste(targety,paste(svarsvm,collapse="+"),sep="~"))
 fullformulasvm<-as.formula(paste(targety,paste(fvarsvm,collapse="+"),sep="~"))
-
 ```
 
 
@@ -303,52 +302,49 @@ ggplot(data=DOWdata, aes(x=date, y=percent_return_next_dividend,color=stock)) +
 
 ```{r}
 # Execute the linear regression and Check whether any autocorrealtion exists between the time period
-control_var=trainControl(method="cv", number=10)
-set.seed(100)
-stock_lm <- train(percent_change_next_weeks_price ~ date+stock+volume+percent_change_price+percent_change_volume_over_last_wk+percent_return_next_dividend,
-                  data = train, trControl = control_var, method = "lm")
+stock_lm_formula <- "percent_change_next_weeks_price ~ date+percent_change_price+percent_change_volume_over_last_wk+days_to_next_dividend+percent_return_next_dividend"
 ```
+
+
 ```{r}
-stock_lm$results
-```
-```{r}
+#model<-stock_lm
+
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+stock_lm=lm(formula = stock_lm_formula,data = trainstock)
+
 stock_lm_res=resid(stock_lm)
-```
-```{r}
-plot(x=train$date,y=stock_lm_res, ylab="Residuals", xlab="Date") 
+
+
+par(mfrow = c(1, 2))
+plot(x=trainstock$date,y=stock_lm_res, ylab="Residuals", xlab="Date",type="b") 
 abline(0,0)
+
+}
+
 ```
-
-
 ```{r}
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
 y=train$percent_change_next_weeks_price
 lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of price change for next week")
-```
-```{r}
-y=train$volume
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for volumes of stock traded")
-```
-```{r}
+y=train$days_to_next_dividend
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Number of days to next dividend")
 y=train$percent_change_price
 lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
-```
-```{r}
 y=train$percent_change_volume_over_last_wk
 lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,
          main = "Percent change in volume of stocks traded compared to the previous week")
-```
-
-```{r}
 y=train$percent_return_next_dividend
 lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
-```
-
-**Based on the above lag plots , there exist  auto regressive behavior**
-
-```{r}
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
+}
 
 ```
+
+
+
 
 
 
