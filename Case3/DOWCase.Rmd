@@ -44,11 +44,11 @@ library(lubridate)
 library(ggplot2)
 library(tidyverse)
 
-#setwd("~/GitHub/DA6813CaseStudies/Case3")
+setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
-setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
+#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
 ```
 
 
@@ -72,22 +72,23 @@ q2<-unique(DOWdata$date[DOWdata$quarter==2])
 
 
 for(j in list(q1,q2)){
-  #print(j)
-for(i in 1:length(j)){
-  #print(i)
-  DOWdata$time[DOWdata$date==j[i]]<-i
+  for(i in 1:length(j)){
+    DOWdata$time[DOWdata$date==j[i]]<-i
+}
+}
 
-}
-}
 # vars= names(DOWdata)[4:length(names(DOWdata))]
 # for(v in vars){
 #   var_name=paste(v,"lag",sep="_")
 #   print(var_name)
-#   DOWdata=DOWdata %>%
-#           group_by(stock) %>%
-#           mutate(.,!!var_name :=dplyr::lag(v,n=1)) %>%
-#           ungroup()
-# }
+#   print(typeof(var))
+#   DOWdata$as.character(substitute(var_name))<-lag(DOWdata$as.character(substitute(var)),n=1)
+   #DOWdata=DOWdata %>%
+  #         group_by(stock) %>%
+  #         mutate(var_name :=dplyr::lag(v,n=1)) %>%
+  #         ungroup()
+ #}
+
 
 # Open Lag
 DOWdata=DOWdata %>%
@@ -157,25 +158,15 @@ mutate(previous_weeks_volume_lag = dplyr::lag(previous_weeks_volume, n =1))
 train<-DOWdata[DOWdata$quarter==1,]
 test<-DOWdata[DOWdata$quarter==2,]
 
-#train<-na_ma(train)
-#test<-na_ma(test)
+train<-na_ma(train)
+test<-na_ma(test)
 
-str(train)
-```
-
-```{r}
-names(DOWdata)
+#str(train)
 ```
 ```{r}
-length(names(DOWdata))
-for(i in 4:length(names(DOWdata))){
-  nam=names(DOWdata)[i]
-  print(paste(nam,"lag",sep="_"))
-  DOWdata=DOWdata %>%
-          group_by(stock)%>%
-          mutate(paste(nam,"lag",sep="_")=dplyr::lag(nam,n=1))
-}
+head(train)
 ```
+
 
 
 ```{r}
@@ -249,15 +240,15 @@ fulllagformulasvm<-as.formula(paste(targety,paste(flagvarsvm,collapse="+"),sep="
 ```
 
 
-```{r, echo=F, eval=}
-boruta_var_imp_output=Boruta(fulllagformula,data=na.omit(train),doTrace=1)
-boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
-boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
+```{r, echo=F, eval=F}
+#boruta_var_imp_output=Boruta(fulllagformula,data=na.omit(train),doTrace=1)
+#boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
+#boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
 #Variable Importance Scores
-boruta_imps <- attStats(boruta_roug_fix_mod)
-boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
-boruta_imps2[order(-boruta_imps2$meanImp), ]
-plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")
+#boruta_imps <- attStats(boruta_roug_fix_mod)
+#boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
+#boruta_imps2[order(-boruta_imps2$meanImp), ]
+#plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")
 ```
 
 
@@ -285,9 +276,11 @@ fulllagtree<-rpart(formula=fulllagformulasvm,method = "anova",data=train)
 ```
 
 ```{r}
-Results_df<-data.frame(matrix(ncol = length(unique(test$stock)), nrow = 0))
-colnames(Results_df)=unique(test$stock)
+#Results_df<-data.frame(matrix(ncol = length(unique(test$stock)), nrow = 0))
+#colnames(Results_df)=unique(test$stock)
 ```
+
+
 
 
 ```{r}
@@ -295,36 +288,56 @@ colnames(Results_df)=unique(test$stock)
 #Compares prediction on data that was used to train the model and then on new test data
 #Due to some stocks having more outliers than average, the training data can yield even worse predictions
 
-model<-originaltree
 
+modellabels<-c("selectlm","fulllm","originallm","selectsvm","fullsvm","originalsvm","fulltree",
+               "originaltree","fulllaglm","siglaglm","fulllagsvm","fulllagtree")
+modellist<-list(selectlm,fulllm,originallm,selectsvm,fullsvm,originalsvm,fulltree,
+                originaltree,fulllaglm,siglaglm,fulllagsvm,fulllagtree)
+
+
+results<-as.data.frame(matrix(ncol=5,nrow=0))
+colnames(results) <- c("Model","Stock","TrainMSE","TestMSE","Beta")
+
+for(m in 1:length(modellist)){
 for(i in unique(test$stock)){
+model<-modellist[[m]]
 target<-test[test$stock==i,]
 prediction<-predict(model,target)
+
 
 trainstock<-train[train$stock==i,]
 trainedpred<-predict(model,trainstock)
 
-metrics=matrix(c("TrainMSE","TestMSE"))
 
 trainmse<-mean((trainedpred-trainstock$percent_change_next_weeks_price)^2)
 testmse<-mean((prediction-target$percent_change_next_weeks_price)^2)
 
-metrics=matrix(c("TrainMSE","TestMSE"))
-metrics_val=matrix(c(trainmse,testmse))
 
-par(mfrow = c(1, 2))
-plot(trainstock$time,trainstock$percent_change_next_weeks_price,main=paste("Train:",i,"MSE:",round(trainmse,3)))
-lines(trainstock$percent_change_next_weeks_price,col="red")
-lines(trainedpred,col="blue")
+resultrow<-c(modellabels[m],i,trainmse,testmse,CAPM$Beta[CAPM$Stock==i])
+results<-rbind(results,resultrow)
 
-plot(target$time,target$percent_change_next_weeks_price,main=paste("Test:",i,"MSE:",round(testmse,3)))
-lines(target$percent_change_next_weeks_price,col="red")
-lines(prediction,col="blue")
+#par(mfrow = c(1, 2))
+#plot(trainstock$time,trainstock$percent_change_next_weeks_price,main=paste("Train:",i,"MSE:",round(trainmse,3)))
+#lines(trainstock$percent_change_next_weeks_price,col="red")
+#lines(trainedpred,col="blue")
+
+#plot(target$time,target$percent_change_next_weeks_price,main=paste("Test:",i,"MSE:",round(testmse,3)))
+#lines(target$percent_change_next_weeks_price,col="red")
+#lines(prediction,col="blue")
 
 }
+}
+colnames(results) <- c("Model","Stock","TrainMSE","TestMSE","Beta")
+results$Difference<-(as.numeric(results$TestMSE)-as.numeric(results$TrainMSE))
+
 ```
 
 
+
+```{r}
+table((results$Model[results$TestMSE<4]))
+
+```
 
 
 
