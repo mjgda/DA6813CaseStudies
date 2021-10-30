@@ -39,6 +39,10 @@ library(e1071)
 library(rpart)
 library(tseries)
 library(quantmod)
+library(reshape2)
+library(lubridate)
+library(ggplot2)
+library(tidyverse)
 
 #setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/GitHub")
@@ -61,31 +65,59 @@ for(i in c(4:7,12:13)){
   
 }
 DOWdata$date<-as.Date(DOWdata$date,format ="%m/%d/%Y")
-
+DOWdata=na.ma(DOWdata)
 DOWdata$time<-as.numeric(DOWdata$date)
 q1<-unique(DOWdata$date[DOWdata$quarter==1])
 q2<-unique(DOWdata$date[DOWdata$quarter==2])
 
+
 for(j in list(q1,q2)){
-  print(j)
+  #print(j)
 for(i in 1:length(j)){
-  print(i)
+  #print(i)
   DOWdata$time[DOWdata$date==j[i]]<-i
 
 }
 }
 
-#params<-preProcess(DOWdata[c(-1,-17)],method=c("scale","nzv"))
-#DOWdata[c(-1,-17)]<-predict(params,DOWdata[c(-1,-17)])
+for(i in 4:(length(names(DOWdata))-1)){
+  nam=names(DOWdata)[i]
+  print(nam)
+  var_name=paste(nam,"lag",sep="_")
+  print(var_name)
+  DOWdata=DOWdata %>%
+          group_by(stock) %>% 
+          mutate(.,!!var_name :=dplyr::lag(nam,n=1)) %>% 
+          ungroup()
+}
+
+
+
+
 
 train<-DOWdata[DOWdata$quarter==1,]
 test<-DOWdata[DOWdata$quarter==2,]
 
-train<-na_ma(train)
-test<-na_ma(test)
+#train<-na_ma(train)
+#test<-na_ma(test)
 
 str(train)
 ```
+
+```{r}
+names(DOWdata)
+```
+```{r}
+length(names(DOWdata))
+for(i in 4:length(names(DOWdata))){
+  nam=names(DOWdata)[i]
+  print(paste(nam,"lag",sep="_"))
+  DOWdata=DOWdata %>%
+          group_by(stock)%>%
+          mutate(paste(nam,"lag",sep="_")=dplyr::lag(nam,n=1))
+}
+```
+
 
 ```{r}
 #index for CAPM
@@ -169,6 +201,7 @@ originalsvm<-svm(formula=originalformula,data=train)
 fulltree<-rpart(formula=fullformulasvm,method = "anova",data=train)
 originaltree<-rpart(formula=originalformula,method = "anova",data=train)
 
+laglm=glm()
 ```
 
 
@@ -305,43 +338,79 @@ ggplot(data=DOWdata, aes(x=date, y=percent_return_next_dividend,color=stock)) +
 stock_lm_formula <- "percent_change_next_weeks_price ~ date+percent_change_price+percent_change_volume_over_last_wk+days_to_next_dividend+percent_return_next_dividend"
 ```
 
-
 ```{r}
-#model<-stock_lm
-
-for(i in unique(test$stock)){
+Residual_df<-data.frame(matrix(ncol = 3, nrow = 0))
+for(i in unique(train$stock)){
 
 trainstock<-train[train$stock==i,]
 stock_lm=lm(formula = stock_lm_formula,data = trainstock)
 
 stock_lm_res=resid(stock_lm)
-
-
-par(mfrow = c(1, 2))
-plot(x=trainstock$date,y=stock_lm_res, ylab="Residuals", xlab="Date",type="b") 
-abline(0,0)
-
+date=as.Date(trainstock$date,format ="%m/%d/%Y")
+stock_nam=rep(i,times=length(trainstock$stock))
+Res_data<- data.frame(matrix(stock_nam),matrix(date),matrix(stock_lm_res))
+  
+Residual_df <- rbind(Residual_df, Res_data)
 }
-
+colnames(Residual_df) <- c("Stock","date","residuals")
+str(Residual_df)
+Residual_df$date<-as_date(Residual_df$date)
 ```
+```{r}
+ggplot(data=Residual_df, aes(x=date, y=residuals,color=Stock)) +
+  geom_point() +
+  geom_line()+
+  xlab("")+
+  ylab("Residuals")
+```
+
+
 ```{r}
 for(i in unique(test$stock)){
 
 trainstock<-train[train$stock==i,]
 y=train$percent_change_next_weeks_price
 lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of price change for next week")
-y=train$days_to_next_dividend
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Number of days to next dividend")
-y=train$percent_change_price
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
-y=train$percent_change_volume_over_last_wk
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,
-         main = "Percent change in volume of stocks traded compared to the previous week")
-y=train$percent_return_next_dividend
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
 }
 
 ```
+
+```{r}
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$days_to_next_dividend
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Number of days to next dividend")
+}
+```
+```{r}
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_change_price
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
+}
+```
+
+
+```{r}
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_change_volume_over_last_wk
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,
+         main = "Percent change in volume of stocks traded compared to the previous week")
+}
+```
+```{r}
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_return_next_dividend
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
+}
+```
+
 
 
 
