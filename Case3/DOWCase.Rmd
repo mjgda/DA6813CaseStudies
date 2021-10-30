@@ -79,21 +79,80 @@ for(i in 1:length(j)){
 
 }
 }
+# vars= names(DOWdata)[4:length(names(DOWdata))]
+# for(v in vars){
+#   var_name=paste(v,"lag",sep="_")
+#   print(var_name)
+#   DOWdata=DOWdata %>%
+#           group_by(stock) %>%
+#           mutate(.,!!var_name :=dplyr::lag(v,n=1)) %>%
+#           ungroup()
+# }
 
-for(i in 4:(length(names(DOWdata))-1)){
-  nam=names(DOWdata)[i]
-  print(nam)
-  var_name=paste(nam,"lag",sep="_")
-  print(var_name)
-  DOWdata=DOWdata %>%
-          group_by(stock) %>% 
-          mutate(.,!!var_name :=dplyr::lag(nam,n=1)) %>% 
-          ungroup()
-}
+# Open Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(open_lag=dplyr::lag(open,n=1))
 
+# High Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(high_lag=dplyr::lag(high,n=1))
 
+# Low Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(low_lag=dplyr::lag(low,n=1))
 
+# Close Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(close_lag=dplyr::lag(close,n=1))
 
+# percent_change_price
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(percent_change_price_lag=dplyr::lag(percent_change_price,n=1))
+
+# Percent Change Volume Over Last Week Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(percent_change_volume_over_last_wk_lag=dplyr::lag(percent_change_volume_over_last_wk,n=1))
+
+# Percent Change Next Weeks Price Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(percent_change_next_weeks_price_lag=dplyr::lag(percent_change_next_weeks_price,n=1))
+
+# days_to_next_dividend_lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(days_to_next_dividend_lag=dplyr::lag(days_to_next_dividend,n=1))
+
+# Percent Return Next Dividend Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(percent_return_next_dividend_lag=dplyr::lag(percent_return_next_dividend,n=1))
+
+# Next Weeks Close Lag
+DOWdata=DOWdata %>%
+group_by(stock)%>%
+mutate(next_weeks_close_lag=dplyr::lag(next_weeks_close,n=1))
+
+# Next Weeks Open Lag
+DOWdata= DOWdata %>%
+group_by(stock) %>%
+mutate(next_weeks_open_lag = dplyr::lag(next_weeks_open, n =1))
+
+# Volume Lag
+DOWdata= DOWdata %>%
+group_by(stock) %>%
+mutate(volume_lag = dplyr::lag(volume, n =1))
+
+# Previous Volume Lag
+DOWdata= DOWdata %>%
+group_by(stock) %>%
+mutate(previous_weeks_volume_lag = dplyr::lag(previous_weeks_volume, n =1))
 
 train<-DOWdata[DOWdata$quarter==1,]
 test<-DOWdata[DOWdata$quarter==2,]
@@ -159,7 +218,17 @@ fvarsvm<-c("percent_change_price","percent_change_volume_over_last_wk","time",
 ovar<-c("percent_change_price","percent_change_volume_over_last_wk",
         "days_to_next_dividend","percent_return_next_dividend")
 
+flagvar=c("percent_change_price_lag","percent_change_volume_over_last_wk_lag",
+        "open_lag","days_to_next_dividend_lag","percent_return_next_dividend_lag","close_lag",
+        "high_lag","low_lag","stock","previous_weeks_volume_lag","volume_lag")
+flagvarsvm<-c("percent_change_price_lag","percent_change_volume_over_last_wk_lag",
+        "open_lag","days_to_next_dividend_lag","percent_return_next_dividend_lag","close_lag",
+        "high_lag","low_lag","previous_weeks_volume_lag","volume_lag")
+slagvar<-c("percent_return_next_dividend_lag","low_lag","open_lag","close_lag","high_lag","volume_lag",
+        "previous_weeks_volume_lag","stock")
 
+
+#full=c(fvar,flagvar)
 #optimized formulas, svm needs to have stock excluded because it can't calculate without variation
 svar<-c("time","time:percent_return_next_dividend","close","stock")
 svarsvm<-c("time","time:percent_return_next_dividend","close")
@@ -171,18 +240,24 @@ originalformula<-as.formula(paste(targety,paste(ovar,collapse="+"),sep="~"))
 
 selectformulasvm<-as.formula(paste(targety,paste(svarsvm,collapse="+"),sep="~"))
 fullformulasvm<-as.formula(paste(targety,paste(fvarsvm,collapse="+"),sep="~"))
+
+
+fulllagformula<-as.formula(paste(targety,paste(flagvar,collapse="+"),sep="~"))
+slagformula<-as.formula(paste(targety,paste(slagvar,collapse="+"),sep="~"))
+
+fulllagformulasvm<-as.formula(paste(targety,paste(flagvarsvm,collapse="+"),sep="~"))
 ```
 
 
-```{r, echo=F, eval=F,include=F}
-#boruta_var_imp_output=Boruta(percent_change_next_weeks_price~percent_change_price+percent_change_volume_over_last_wk+time+open+days_to_next_dividend+percent_return_next_dividend+close+high+low,data=na.omit(train),doTrace=1)
-#boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
-#boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
-# Variable Importance Scores
-#boruta_imps <- attStats(boruta_roug_fix_mod)
-#boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
-#boruta_imps2[order(-boruta_imps2$meanImp), ]
-#plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")  
+```{r, echo=F, eval=}
+boruta_var_imp_output=Boruta(fulllagformula,data=na.omit(train),doTrace=1)
+boruta_signif <- getSelectedAttributes(boruta_var_imp_output, withTentative = TRUE)
+boruta_roug_fix_mod=TentativeRoughFix(boruta_var_imp_output)
+#Variable Importance Scores
+boruta_imps <- attStats(boruta_roug_fix_mod)
+boruta_imps2 = boruta_imps[boruta_imps$decision != 'Rejected', c('meanImp', 'decision')]
+boruta_imps2[order(-boruta_imps2$meanImp), ]
+plot(boruta_var_imp_output, cex.axis=.7, las=2, xlab="", main="Variable Importance")
 ```
 
 
@@ -201,9 +276,18 @@ originalsvm<-svm(formula=originalformula,data=train)
 fulltree<-rpart(formula=fullformulasvm,method = "anova",data=train)
 originaltree<-rpart(formula=originalformula,method = "anova",data=train)
 
-laglm=glm()
+fulllaglm<-glm(formula=fulllagformula,family="gaussian",data=train)
+siglaglm<-glm(formula=slagformula,family="gaussian",data=train)
+
+fulllagsvm<-svm(formula=fulllagformulasvm,data=train)
+
+fulllagtree<-rpart(formula=fulllagformulasvm,method = "anova",data=train)
 ```
 
+```{r}
+Results_df<-data.frame(matrix(ncol = length(unique(test$stock)), nrow = 0))
+colnames(Results_df)=unique(test$stock)
+```
 
 
 ```{r}
@@ -220,9 +304,13 @@ prediction<-predict(model,target)
 trainstock<-train[train$stock==i,]
 trainedpred<-predict(model,trainstock)
 
+metrics=matrix(c("TrainMSE","TestMSE"))
+
 trainmse<-mean((trainedpred-trainstock$percent_change_next_weeks_price)^2)
 testmse<-mean((prediction-target$percent_change_next_weeks_price)^2)
 
+metrics=matrix(c("TrainMSE","TestMSE"))
+metrics_val=matrix(c(trainmse,testmse))
 
 par(mfrow = c(1, 2))
 plot(trainstock$time,trainstock$percent_change_next_weeks_price,main=paste("Train:",i,"MSE:",round(trainmse,3)))
