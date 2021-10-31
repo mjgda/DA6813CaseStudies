@@ -65,7 +65,7 @@ for(i in c(4:7,12:13)){
   
 }
 DOWdata$date<-as.Date(DOWdata$date,format ="%m/%d/%Y")
-DOWdata=na.ma(DOWdata)
+DOWdata<-na_ma(DOWdata)
 DOWdata$time<-as.numeric(DOWdata$date)
 q1<-unique(DOWdata$date[DOWdata$quarter==1])
 q2<-unique(DOWdata$date[DOWdata$quarter==2])
@@ -76,19 +76,6 @@ for(j in list(q1,q2)){
     DOWdata$time[DOWdata$date==j[i]]<-i
 }
 }
-
-# vars= names(DOWdata)[4:length(names(DOWdata))]
-# for(v in vars){
-#   var_name=paste(v,"lag",sep="_")
-#   print(var_name)
-#   print(typeof(var))
-#   DOWdata$as.character(substitute(var_name))<-lag(DOWdata$as.character(substitute(var)),n=1)
-   #DOWdata=DOWdata %>%
-  #         group_by(stock) %>%
-  #         mutate(var_name :=dplyr::lag(v,n=1)) %>%
-  #         ungroup()
- #}
-
 
 # Open Lag
 DOWdata=DOWdata %>%
@@ -158,13 +145,66 @@ mutate(previous_weeks_volume_lag = dplyr::lag(previous_weeks_volume, n =1))
 train<-DOWdata[DOWdata$quarter==1,]
 test<-DOWdata[DOWdata$quarter==2,]
 
-train<-na_ma(train)
-test<-na_ma(test)
 
-#str(train)
 ```
+```{r  ExploratoryAnalysis}
+ggplot(data=DOWdata, aes(x=date, y=percent_change_next_weeks_price,color=stock)) +
+  geom_point() +
+  xlab("")
+
+ggplot(data=DOWdata, aes(x=date, y=volume,color=stock)) +
+  geom_point() +
+  xlab("")
+ 
+ggplot(data=DOWdata, aes(x=date, y=percent_change_price,color=stock)) +
+  geom_point() +
+  xlab("")
+
+ggplot(data=DOWdata, aes(x=date, y=percent_change_volume_over_last_wk,color=stock)) +
+  geom_point() +
+  xlab("")
+
+ggplot(data=DOWdata, aes(x=date, y=percent_return_next_dividend,color=stock)) +
+  geom_point() +
+  xlab("")
+
+## Based on the time series plot on various stocks, it can be inferred that the data follows the stationary pattern over the variables volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price and percent_return_next_dividend
+```
+
 ```{r}
-head(train)
+lag.plot(train$percent_change_next_weeks_price,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = paste("Lag plot for Percentage of price change for next week:","Total"))
+
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_change_next_weeks_price[train$stock==i]
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = paste("Lag plot for Percentage of price change for next week:",i))
+}
+
+
+lag.plot(train$percent_change_price,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes:Total")
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_change_price[train$stock==i]
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = paste("Lag plot for Percentage of Price changes:",i))
+}
+
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_change_volume_over_last_wk[train$stock==i]
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,
+         main = "Lag Plot for Percent change in volume of stocks traded compared to the previous week")
+}
+
+lag.plot(train$percent_return_next_dividend,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = paste("Percentage of return in the next dividend: Total"))
+for(i in unique(test$stock)){
+
+trainstock<-train[train$stock==i,]
+y=train$percent_return_next_dividend[train$stock==i]
+lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = paste("Lag Plot for Percentage of return in the next dividend:",i)) 
+}
 ```
 
 
@@ -189,7 +229,7 @@ betta<-summary(lm(as.formula(paste(i,"DOW",sep="~")),as.data.frame(Returns)))
 CAPM<-rbind(CAPM,c(i,betta$coefficients[2,1]))
 }
 colnames(CAPM) <- c("Stock","Beta")
-CAPM
+
 ```
 
 
@@ -287,7 +327,7 @@ siglagtree<-rpart(formula=slagformulasvm,method = "anova",data=train)
 
 
 
-```{r}
+```{r, echo=F}
 #Change model to compare
 #Compares prediction on data that was used to train the model and then on new test data
 #Due to some stocks having more outliers than average, the training data can yield even worse predictions
@@ -316,6 +356,8 @@ trainmse<-mean((trainedpred-trainstock$percent_change_next_weeks_price)^2)
 testmse<-mean((prediction-target$percent_change_next_weeks_price)^2)
 
 resultrow<-list(modellabels[m],i,trainmse,testmse,CAPM$Beta[CAPM$Stock==i])
+print(modellabels[m])
+print(length(resultrow))
 #print(resultrow)
 results<-rbind(results,resultrow)
 }
@@ -323,10 +365,62 @@ results<-rbind(results,resultrow)
 colnames(results) <- c("Model","Stock","TrainMSE","TestMSE","Beta")
 results$Difference<-(results$TestMSE-results$TrainMSE)
 
+
+```
+
+
+
+
+```{r}
+#ggplot(data=results[results$Model=="siglagsvm",], aes(x=TestMSE, y=Difference,color=Stock)) +
+#  geom_point() +
+#  xlab("")
+```
+
+
+```{r}
+#Change model to compare
+#Compares prediction on data that was used to train the model and then on new test data
+#Due to some stocks having more outliers than average, the training data can yield even worse predictions
+
+
+modellabels<-c("selectlm","fulllm","originallm","fulllaglm","siglaglm","selectsvm","fullsvm","originalsvm",
+               "fulllagsvm","siglagsvm","fulltree","originaltree","fulllagtree","siglagtree")
+modellist<-list(selectlm,fulllm,originallm,fulllaglm,siglaglm,selectsvm,fullsvm,originalsvm,fulllagsvm,siglagsvm,
+                fulltree,originaltree,fulllagtree,siglagtree)
+
+
+overallresults<-as.data.frame(matrix(ncol=3,nrow=0))
+colnames(overallresults) <- c("Model","TrainMSE","TestMSE")
+
+for(m in 1:length(modellist)){
+
+model<-modellist[[m]]
+target<-test
+prediction<-predict(model,target)
+
+
+trainstock<-train
+trainedpred<-predict(model,trainstock)
+
+trainmse<-sqrt(mean((trainedpred-trainstock$percent_change_next_weeks_price)^2))
+testmse<-sqrt(mean((prediction-target$percent_change_next_weeks_price)^2))
+
+resultrow<-list(modellabels[m],trainmse,testmse)
+#print(resultrow)
+overallresults<-rbind(overallresults,resultrow)
+
+}
+colnames(overallresults) <- c("Model","TrainRMSE","TestRMSE")
+overallresults$Difference<-(overallresults$TestRMSE-overallresults$TrainRMSE)
+
+overallresults[order(overallresults$TestRMSE),]
 ```
 
 ```{r}
-results
+#ggplot(data=results[results$Model=="siglagsvm",], aes(x=TestMSE, y=Difference,color=Stock)) +
+#  geom_point() +
+#  xlab("")
 ```
 
 
@@ -336,7 +430,7 @@ table((results$Model[results$TestMSE<5]))
 table((results$Model[results$Difference<3]))
 
 ```
-
+The selectSVM has the most stocks with a TestMSE less than 5 and also the most Stocks that have a difference 
 ```{r}
 
 model<-selectsvm
@@ -370,97 +464,6 @@ lines(prediction,col="blue")
 
 
 
-```{r readprepare, include=FALSE, eval=F}
-# Load the Dataset 
-#Stock_Det = read_csv("dow_jones_index.data")
-#Stock_Det = DOWdata
-#str(Stock_Det)
-#glimpse(Stock_Det)
-
-# Convert the price into Numberic value
-#Stock_Det$open=as.numeric(gsub("\\$","",Stock_Det$open))
-#Stock_Det$high=as.numeric(gsub("\\$","",Stock_Det$high))
-#Stock_Det$low=as.numeric(gsub("\\$","",Stock_Det$low))
-#Stock_Det$close=as.numeric(gsub("\\$","",Stock_Det$close))
-#Stock_Det$next_weeks_open=as.numeric(gsub("\\$","",Stock_Det$next_weeks_open))
-#Stock_Det$next_weeks_close=as.numeric(gsub("\\$","",Stock_Det$next_weeks_close))
-
-## Convert the date into Date Format
-#Stock_Det$date=mdy(Stock_Det$date)
-#summary(Stock_Det)
-
-# Check the missing Values and the missing Column
-#sum(is.na(Stock_Det))
-#names(which(sapply(Stock_Det, anyNA)))
-#Stock_symbol=unique(Stock_Det[c("stock")])
-#stoc_det_num=subset(Stock_Det,select = -c(stock))
-
-# There Are totally 60 missing values in the data set . The columns which has the missing values are "percent_change_volume_over_last_wk" "previous_weeks_volume" .Each Column has 30 Missing values based on the number of unique stocks. The missing values are due to the fact that the previous week data (December 2010) is not available. The missing values are getting imputed using the Weighted moving average algorithm, which adds more weight to the previous data for imputation 
-#imputed_data=na_ma(Stock_Det)
-
-## Normalize the data set
-# The Data Available in the dataset are not not in the same scale. In-order to have an effective analysis We are normalizing the data to be in the same scale.
-#params=preProcess(imputed_data,method=c("scale","center","nzv"))
-#Scale_stock_det= predict(params,Stock_Det)
-
-# Split the data into Train and test
-# Training dataset will contain the stock records for the month January to March. Whereas the testing dataset contains the stock records for the month April to June.
-#train_data = subset(Scale_stock_det,(month(date)>=1 & month(date)<=3))
-#test_data= subset(Scale_stock_det,(month(date)>=4 & month(date)<=6))
-```
-
-
-```{r  ExploratoryAnalysis}
-# The data set contains 16 variables, out of which we are going to consider the below variables
-# quarter,date,stock,volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price,percent_return_next_dividend. <Need to have some explanation why we are not considering the other variables>
-
-#stock_det_cons=subset(Stock_Det,select=-c(open,high,low,close,previous_weeks_volume,next_weeks_open,next_weeks_close,days_to_next_dividend))
-
-#imputed_stock_det_cons=na_ma(stock_det_cons)
-#imputed_stock_det_cons=stock_det_cons
-
-#params=preProcess(imputed_stock_det_cons,method=c("scale","center","nzv"))
-#Scale_stock_det_cons= predict(params,imputed_stock_det_cons)
-
-#train_stock_det_cons = subset(Scale_stock_det_cons,(month(date)>=1 & month(date)<=3))
-#test_stock_det_cons= subset(Scale_stock_det_cons,(month(date)>=4 & month(date)<=6))
-```
-
-
-```{r  ExploratoryAnalysis}
-ggplot(data=DOWdata, aes(x=date, y=percent_change_next_weeks_price,color=stock)) +
-  geom_point() +
-  xlab("")
-
-```
-
-
-```{r ExploratoryAnalysis}
-ggplot(data=DOWdata, aes(x=date, y=volume,color=stock)) +
-  geom_point() +
-  xlab("")
- 
-```
-
-
-```{r ExploratoryAnalysis}
-ggplot(data=DOWdata, aes(x=date, y=percent_change_price,color=stock)) +
-  geom_point() +
-  xlab("")
-```
-```{r ExploratoryAnalysis}
-ggplot(data=DOWdata, aes(x=date, y=percent_change_volume_over_last_wk,color=stock)) +
-  geom_point() +
-  xlab("")
-```
-
-```{r ExploratoryAnalysis}
-ggplot(data=DOWdata, aes(x=date, y=percent_return_next_dividend,color=stock)) +
-  geom_point() +
-  xlab("")
-
-## Based on the time series plot on various stocks, it can be inferred that the data follows the stationary pattern over the variables volume,percent_change_price,percent_change_volume_over_last_wk,percent_change_next_weeks_price and percent_return_next_dividend
-```
 
 ```{r}
 # Execute the linear regression and Check whether any autocorrealtion exists between the time period
@@ -494,59 +497,6 @@ ggplot(data=Residual_df, aes(x=date, y=residuals,color=Stock)) +
 ```
 
 
-```{r}
-for(i in unique(test$stock)){
-
-trainstock<-train[train$stock==i,]
-y=train$percent_change_next_weeks_price
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of price change for next week")
-}
-
-```
-
-```{r}
-for(i in unique(test$stock)){
-
-trainstock<-train[train$stock==i,]
-y=train$days_to_next_dividend
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Number of days to next dividend")
-}
-```
-```{r}
-for(i in unique(test$stock)){
-
-trainstock<-train[train$stock==i,]
-y=train$percent_change_price
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Lag plot for Percentage of Price changes")
-}
-```
-
-
-```{r}
-for(i in unique(test$stock)){
-
-trainstock<-train[train$stock==i,]
-y=train$percent_change_volume_over_last_wk
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,
-         main = "Percent change in volume of stocks traded compared to the previous week")
-}
-```
-```{r}
-for(i in unique(test$stock)){
-
-trainstock<-train[train$stock==i,]
-y=train$percent_return_next_dividend
-lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of return in the next dividend")
-}
-```
-
-
-
-
-
-
-
-
 
 
 ### I - Executive Summary
@@ -554,6 +504,12 @@ lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of ret
 
 ### II - The Problem
 
+It is well-established that the behavior of stock market prices in the aggregate and in the long term is to trend upwards as a result of improvements in technology and increases in production efficiency, both of which are positively correlated with time as individuals and industry build on the knowledge and expertise of previous generations. It is also well-established that in the short-term stock prices are not predictable, especially based on historical information, which is to say that whether a stock or portfolio increased in value has little to no bearing on whether the stock will increase or decrease the following day.
+Metrics about the financial health of the company can tell more about the prospects for the stock price of that company, such as the price-to-earnings ratio, or the level of debt of the company. But even with this level of detail, there is still very little predictive capability on time scales as small as days or weeks.
+
+But in the spirit of validating industry and academic consensus, we will attempt to use historical stock information to build a model that is able to predict future stock performance.
+
+In addition to generating a model for predicting future performance based on past performance, we will also perform an analysis on each of the component stocks vs the overall index in order to identify stocks that vary the most with the index as well as those that most closely align with the index.
 
 
 ## III - Review of Related Literature
@@ -561,12 +517,21 @@ lag.plot(y,set.lags = 1:8,layout = c(2,4),labels=FALSE,main = "Percentage of ret
 
 ## IV - Methodology
 
+We will use the dataset from the study by Brown, M. S., Pelosi, M. & Dirska, H for testing their genetic algorithm. This dataset is the first two quarters of 2011, and we will use the first quarter for training our models, and then the second quarter for testing the effectiveness of the models.
 
+As the target variable for training the models we use the "percent_change_next_weeks_price" field in the dataset. We know value of this variable because this is all historical information, but for the purposes of training the model we will only have access to the the data that we would know in the "present". This means for the purpose of training our models we exclude the other variables that relate to the "next_week" because in the real world we wouldn't have access to that information yet.
 
+We will train a models using a combination of algorithms and component variables. The algorithms we will use are Linear Regression, linear Support Vector Machine, and Decistion Tree. For the predictor selections, we will use a full model, a model using the variables that were used in the aforementioned original study ("percent_change_price","percent_change_volume_over_last_wk","days_to_next_dividend","percent_return_next_dividend"). We will also use feature sets that are comprised of the lagged values of all the numeric variables in order to try to capture any delayed effect. This means for those models the following week's stock performance will be predicted using data from two weeks before.
+
+Additionally we will use a selection of variables that we selected by trial and error that generated a linear model with the most significant variables, which are as follows: ("time","time:percent_return_next_dividend","close")
+This is also the smallest set of predictors that we will use for any of the models.
+
+After training all of the models, we will compare the Root Mean Squared Error of each model to determine which model performs with the most accuracy at the total index level. And because the exercise is ultimately to determine whether stocks performance can be accurately predicted, we will apply the models to the individual stocks to see how well the model trained on the all of the data performs on individual stocks.
 
 
 ### V - Data
 
+The data is composed of the weekly stock price and volume information for the first 25 weeks of 2011, with Q1 serving as the training data and Q2 serving as the test data. In order to allow for the time element to contribute to the prediction it needs to be converted to a form that can apply equally to each period even though their dates are unique.
 
 ### VI - Findings
 
