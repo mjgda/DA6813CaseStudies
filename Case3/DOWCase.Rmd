@@ -45,11 +45,11 @@ library(lubridate)
 library(ggplot2)
 library(tidyverse)
 
-setwd("~/GitHub/DA6813CaseStudies/Case3")
+#setwd("~/GitHub/DA6813CaseStudies/Case3")
 #setwd("~/MSDA/Fall 2021/GitHub")
 #setwd("~/MSDA/Fall 2021/GitHub/DA6813CaseStudies")
 #setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case2")
-#setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
+setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case3")
 ```
 
 
@@ -272,6 +272,10 @@ siglagtree<-rpart(formula=slagformulasvm,method = "anova",data=train)
 
 ### I - Executive Summary
 
+To determine the model that is best suited to predict stock price for the following week using Dow Jones Market Index data set, we tested a variety of different regression algorithms with different combinations of predictive variables. Ultimately we came to the conclusion that support vector regression utilizing the variables such as week number, the closing price of the current week, and the interactive effect between time and the return on the next dividend for that stock variables had the optimal characteristics in predicting the stock price. 
+
+<Need to Discuss about the stock which has highest risk and lowest risk based on the CAPM beta value>
+
 
 ### II - The Problem
 
@@ -285,14 +289,22 @@ In addition to generating a model for predicting future performance based on pas
 
 ## III - Review of Related Literature
 
+There were many Forecasting and prediction analysis happened with stock market index data set and based upon the usage of various exploration, prediction techniques and hyper parameter optimization, different analysis came with different conclusion and Recommendation.
 
+As per the Journal of "Visualization and Analysis in bank Direct marketing prediction **"Dynamic-Radius Species-Conserving Genetic Algorithm for the Financial Forecasting of Dow Jones Index Stocks"** by Michael Scott Brown, Michael J. Pelosi, and Henry Dirska, Dynam-ic-radius Species-conserving Genetic Algorithm (DSGA) to select stocks to purchase from the Dow Jones Index.These rules are then used to predict stock prices. DSGA is an NGA(Niche Genetic Algorithm) that uses a clustering algorithm enhanced by a tabu list and radial variations. DSGA also uses a shared fitness algorithm (Which encourages the Genetic Algorithm to locate stocks that should produce favorable returns in the following week) to investigate different areas of the domain.
+As per the conclusion the DSGA algorithm did very well in predicting single stock selection for a week of the 30 Dow Jones Index stocks. It produced returns many times greater than the Dow Jones Index, which is often considered a safe and lucrative investment selection. The Dow Jones Index stocks make a great set of stock for forecasting systems because if the system predicts a stock incorrectly losses are normally minimal. DSGA produces these results by examining only four stock characteristics: change in stock price, change in stock volume, days until the next dividend and return of next dividend.
+  
+  Similarly in Stock Price Forecast Based on LSTM Neural Network by Qiang Jiang and Chenglin Tang, Deep Learning techniques such as RNN(Recurrent Neural network) and LSTM(long-short term memory) is used to find the accuracy in predict the stock price in both Shanghai Composite Index and the Dow Jones Index. As per the conclusion the LSTM works very well on Dow Jones Index data set.
+  
+  In this analysis we are also going to try different basic Regression techniques such as linear regression, Decision Trees, support vector Regression with different hyper parameters and different predictors and compare the results based on the accuracy in order to identify the appropriate model in predicting stock price. Also we are using CAPM(Capital Asset Price Marketing) technique to find out the stock with maximum percent of return.
+  
 ## IV - Methodology
 
 We will use the dataset from the study by Brown, M. S., Pelosi, M. & Dirska, H for testing their genetic algorithm. This dataset is the first two quarters of 2011, and we will use the first quarter for training our models, and then the second quarter for testing the effectiveness of the models.
 
 As the target variable for training the models we use the "percent_change_next_weeks_price" field in the dataset. We know value of this variable because this is all historical information, but for the purposes of training the model we will only have access to the the data that we would know in the "present". This means for the purpose of training our models we exclude the other variables that relate to the "next_week" because in the real world we wouldn't have access to that information yet.
 
-We will train a models using a combination of algorithms and component variables. The algorithms we will use are Linear Regression, linear Support Vector Machine, and Decistion Tree. For the predictor selections, we will use a full model, a model using the variables that were used in the aforementioned original study ("percent_change_price","percent_change_volume_over_last_wk","days_to_next_dividend","percent_return_next_dividend"). We will also use feature sets that are comprised of the lagged values of all the numeric variables in order to try to capture any delayed effect. This means for those models the following week's stock performance will be predicted using data from two weeks before.
+We will train a models using a combination of algorithms and component variables. The algorithms we will use are Linear Regression, linear Support Vector Regression, and Decision Tree. For the predictor selections, we will use a full model, a model using the variables that were used in the aforementioned original study ("percent_change_price","percent_change_volume_over_last_wk","days_to_next_dividend","percent_return_next_dividend"). We will also use feature sets that are comprised of the lagged values of all the numeric variables in order to try to capture any delayed effect. This means for those models the following week's stock performance will be predicted using data from two weeks before.
 
 Additionally we will use a selection of variables that we selected by trial and error that generated a linear model with the most significant variables, which are as follows: ("time","time:percent_return_next_dividend","close")
 This is also the smallest set of predictors that we will use for any of the models.
@@ -301,6 +313,16 @@ After training all of the models, we will compare the Root Mean Squared Error of
 
 After training the models, we even noticed that at the individual stock level, the model would occasionally have a lower MSE using the test data than with the training data (the same data that was used to train the model). This further goes to show the random behavior of the stock performance
 
+Following is a brief summary of the Regression Method we used:
+
+**Linear Regression:**
+  Linear regression attempts to model the relationship between dependent and independent variables by fitting a linear equation to observed data. The most common method for fitting a regression line is the method of least-squares. This method calculates the best-fitting line for the observed data by minimizing the sum of the squares of the vertical deviations from each data point to the line.
+
+**Decision Tree:**
+  Decision Trees are a non-parametric supervised learning method used for both classification and regression tasks. The goal is to create a model that predicts the value of a target variable by learning simple decision rules inferred from the data features.The decision rules are generally in form of if-then-else statements.The deeper the tree, the more complex the rules and fitter the model.
+  
+**Support Vector Regression:**
+  SVR is a learning algorithm used in regression tasks works on the same principle as SVM. SVM  is preferable in classification tasks. This algorithm is based on the following idea: if a classifier is effective in separating convergent non-linearly separable data points, then it should perform well on dispersed ones. SVM finds the best separating line that maximizes the distance between the hyperplanes of decision boundaries.Whereas SVR's objective is to find a hyperplane which effectively has the maximum number of points within that Decision boundary.
 
 ### V - Data
 
