@@ -171,6 +171,11 @@ betta<-summary(lm(as.formula(paste(i,"DOW",sep="~")),as.data.frame(Returns)))
 CAPM<-rbind(CAPM,c(i,betta$coefficients[2,1]))
 }
 colnames(CAPM) <- c("Stock","Beta")
+str(CAPM)
+CAPM$Beta=as.numeric(CAPM$Beta)
+CAPM=CAPM[order(-CAPM$Beta),]
+#CAPM_sorted <-CAPM[order(-CAPM$Beta),]
+top_n(CAPM,-3,CAPM$Beta)
 
 ```
 
