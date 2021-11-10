@@ -1,0 +1,187 @@
+---
+title: "Customer Acquisition and Retention"
+author: "Michael Grogan, Visha, Yogi"
+date: "11/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(SMCRM) # CRM data
+library(dplyr) # data wrangling
+library(tidyr) # data wrangling
+library(ggplot2) # plotting
+library(survival) # survival
+library(rpart) # DT
+library(randomForestSRC) # RF
+
+data(acquisitionRetention)
+AR<-acquisitionRetention
+set.seed(123)
+
+```
+
+
+Tasks:
+• Use acquisitionRetention data set to predict which customers will be
+acquired and for how long (duration) based on a feature set using a random
+forest.
+• Compute variable importance to detect interactions and optimize hyperparameters
+for acquired customers.
+• Compare the accuracy of model with a decision trees and logistic regression
+model for acquiring customers.
+o Extra credit: generate PDP plots for all variables
+
+```{r}
+table(AR$employees[AR$acquisition==0])
+
+names(AR)
+```
+```{r}
+View(customerChurn)
+```
+
+
+
+```{r}
+dt.duration <- rpart(duration~.,data = AR)
+dt.acquisition <- rpart(acquisition~acq_exp+acq_exp_sq+industry+revenue+employees,data = AR)
+
+rattle::fancyRpartPlot(dt.duration, sub = "")
+rattle::fancyRpartPlot(dt.acquisition, sub = "")
+```
+
+```{r}
+forest_acq <- rfsrc(acquisition~acq_exp+acq_exp_sq+industry+revenue+employees,data = AR, 
+                            importance = TRUE, 
+                            ntree = 1000)
+
+forest_dur <- rfsrc(duration~.,data = AR, 
+                            importance = TRUE, 
+                            ntree = 1000)
+
+forest_acq
+```
+
+
+```{r}
+forest_dur
+```
+
+```{r}
+data.frame(importance = forest_acq$importance) %>%
+  tibble::rownames_to_column(var = "variable") %>%
+  ggplot(aes(x = reorder(variable,importance), y = importance)) +
+    geom_bar(stat = "identity", fill = "violet", color = "black")+
+    coord_flip() +
+     labs(x = "Variables", y = "Variable importance")
+```
+
+
+
+
+```{r}
+mindepth <- max.subtree(forest_acq,
+                        sub.order = TRUE)
+
+# first order depths
+print(round(mindepth$order, 3)[,1])
+
+# vizualise MD
+data.frame(md = round(mindepth$order, 3)[,1]) %>%
+  tibble::rownames_to_column(var = "variable") %>%
+  ggplot(aes(x = reorder(variable,desc(md)), y = md)) +
+    geom_bar(stat = "identity", fill = "orange", color = "black", width = 0.2)+
+    coord_flip() +
+     labs(x = "Variables", y = "Minimal Depth")
+
+# interactions
+mindepth$sub.order
+
+as.matrix(mindepth$sub.order) %>%
+  reshape2::melt() %>%
+  data.frame() %>%
+  ggplot(aes(x = Var1, y = Var2, fill = value)) +
+    scale_x_discrete(position = "top") +
+    geom_tile(color = "white") +
+    viridis::scale_fill_viridis("Relative min. depth") +
+    labs(x = "", y = "") 
+
+# cross-check with vimp
+find.interaction(forest_acq,
+                      method = "vimp",
+                      importance = "permute")
+```
+
+
+```{r}
+View(customerChurn)
+```
+
+
+```{r}
+# extract marginal effect using partial dependence
+acq_exp_seq = seq(0,145,5)
+marginal.effect <- partial(forest_acq,
+                           partial.xvar = "acq_exp",
+                           partial.values = acq_exp_seq)
+
+means.exp <- marginal.effect$regrOutput$acquisition %>% colMeans()
+
+marginal.effect.df <-
+  data.frame(pred.acquisition = means.exp, acq_exp_seq = acq_exp_seq)
+
+ggplot(marginal.effect.df, aes(x = acq_exp_seq, y = pred.acquisition)) +
+  geom_point(shape = 21, color = "purple", size = 2, stroke = 1.2)+
+  geom_smooth(method = "lm", formula = y ~ poly(x,3), se = FALSE, color = "black")+ # try with other values 
+  labs(x = "Average acquisition in $", y = "Predicted acquisition") +
+  scale_x_continuous(breaks = seq(0,150,25))
+```
+
+```{r}
+ggplot(AR, aes(x = acq_exp_seq, y = acquisition)) +
+  geom_point(shape = 21, col = "purple", size = 3) +
+  stat_smooth(method = "lm", se = FALSE, color = "black") +
+  scale_x_continuous(breaks = seq(0,150,25)) +
+  scale_y_continuous(breaks = seq(0,800,120)) +
+  geom_rug(sides = "b", col = "red", alpha = 0.2) +
+  labs(y = "Actual duration", x = "Average retention in $")
+```
+
+
+
+
+
+
+
+
+### I - Executive Summary
+
+
+### II - The Problem
+
+
+## III - Review of Related Literature
+
+
+  
+## IV - Methodology
+
+
+
+### V - Data
+
+
+
+### VI - Findings
+
+
+### VII - Conclusion
+
+
+### Appendix
+
+
+
+
