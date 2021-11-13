@@ -56,99 +56,120 @@ dur_formula<-as.formula(paste(dur_target,paste(dur_vars,collapse="+"),sep="~"))
 
 Logistic Regression
 ```{r}
-#Logistic Acquisition prediction
-acq_mod<-glm(acq_formula,train,family=binomial(link="probit"))
-train$IMR<-invMillsRatio(acq_mod)$IMR1
+###Logistic Acquisition prediction
+acq_lm<-glm(acq_formula,train,family=binomial(link="probit"))
 
 
-trainbaseline<-ifelse(predict(acq_mod,train,type="response")>0.5,1,0)
-table(trainbaseline,train$acquisition)
-print(sum(trainbaseline==train$acquisition)/length(train$acquisition))
+
+acq_lm_train_pred<-ifelse(predict(acq_lm,train,type="response")>0.5,1,0)
+
+#Confusion Matrix
+#table(acq_lm_train_pred,train$acquisition)
+acq_lm_train_acc<-sum(acq_lm_train_pred==train$acquisition)/length(train$acquisition)
+
+
+
+acq_lm_test_pred<-ifelse(predict(acq_lm,test,type="response")>0.5,1,0)
+
+#Confusion Matrix
+#table(acq_lm_test_pred,test$acquisition)
+acq_lm_test_acc<-sum(acq_lm_test_pred==test$acquisition)/length(test$acquisition)
 ```
 
-
 ```{r}
-acq_pred<-ifelse(predict(acq_mod,test,type="response")>0.5,1,0)
+####Logistic Duration Prediction
+train$IMR<-invMillsRatio(glm(acq_formula,train,family=binomial(link="probit")))$IMR1
 
-table(acq_pred,test$acquisition)
-print(sum(acq_pred==test$acquisition)/length(test$acquisition))
-```
+dur_lm<-glm(dur_formula,train,family=gaussian)
 
-```{r}
-#Logistic Duration Prediction
-#dur_mod<-glm(dur_formula,train[train$acquisition==1,],family=gaussian)
-dur_mod<-glm(dur_formula,train,family=gaussian)
+dur_lm_train_RMSE<-sqrt(mean(dur_lm$residuals^2))
 
-sqrt(mean(dur_mod$residuals^2))
-```
-```{r}
 
 test$IMR<-invMillsRatio(glm(acq_formula,test,family=binomial(link="probit")))$IMR1
 
-dur_pred<-predict(dur_mod,test)
-sqrt(mean((dur_pred-test$duration)^2))
+dur_pred<-predict(dur_lm,test)
+dur_lm_test_RMSE<-sqrt(mean((dur_pred-test$duration)^2))
 ```
 
 Single Decision Tree
 
+```{r}
+acq_dt<-rpart(acq_formula,train)
+dur_dt<-rpart(dur_formula,train)
+```
+
 
 ```{r}
-dt_acq<-rpart(acq_formula,train)
-dt_dur<-rpart(dur_formula,train)
+acq_dt_train_pred<-ifelse(predict(acq_dt,train)>0.5,1,0)
+acq_dt_train_acc<-sum(acq_dt_train_pred==train$acquisition)/length(train$acquisition)
+#Confusion Matrix
+#table(acq_dt_train_pred,train$acquisition)
 
 
+acq_dt_test_pred<-ifelse(predict(acq_dt,test)>0.5,1,0)
+acq_dt_test_acc<-sum(acq_dt_test_pred==test$acquisition)/length(test$acquisition)
+#Confusion Matrix
+#table(acq_dt_test_pred,test$acquisition)
+
+
+dur_dt_train_pred<-predict(dur_dt,train)
+dur_dt_train_RMSE<-sqrt(mean((dur_dt_train_pred-train$duration)^2))
+
+
+dur_dt_test_pred<-predict(dur_dt,test)
+dur_dt_test_RMSE<-sqrt(mean((dur_dt_test_pred-test$duration)^2))
+```
+
+
+
+Un-tuned Random Forest
+```{r}
+untuned_acq <- rfsrc(acq_formula,data = train)
+```
+
+
+```{r}
+acq_untunedrf_train_pred<-ifelse(predict(untuned_acq,train)$predicted>0.5,1,0)
+acq_untunedrf_train_acc<-sum(acq_untunedrf_train_pred==train$acquisition)/length(train$acquisition)
+#Confusion Matrix
+#table(acq_untunedrf_train_pred,train$acquisition)
+
+
+acq_untunedrf_test_pred<-ifelse(predict(untuned_acq,test)$predicted>0.5,1,0)
+acq_untunedrf_test_acc<-sum(acq_untunedrf_test_pred==test$acquisition)/length(test$acquisition)
+
+#Confusion Matrix
+#table(acq_untunedrf_test_pred,test$acquisition)
+```
+
+
+```{r}
+untuned_dur <- rfsrc(dur_formula,data = train)
+```
+
+
+```{r}
+dur_untunedrf_train_pred<-predict(untuned_dur,train)$predicted
+dur_untunedrf_train_RMSE<-sqrt(mean((dur_untunedrf_train_pred-train$duration)^2))
+     
+
+dur_untunedrf_test_pred<-predict(untuned_dur,test)$predicted
+dur_untunedrf_test_RMSE<-sqrt(mean((dur_untunedrf_test_pred-test$duration)^2))
 
 
 ```
 
 
 
-```{r}
-trainbaselinedt<-ifelse(predict(dt_acq,train)>0.5,1,0)
-table(trainbaselinedt,train$acquisition)
-print(sum(trainbaseline==train$acquisition)/length(train$acquisition))
 
 
-```
-
-
-
-```{r}
-acq_pred<-ifelse(predict(dt_acq,test)>0.5,1,0)
-
-table(acq_pred,test$acquisition)
-print(sum(acq_pred==test$acquisition)/length(test$acquisition))
-
-```
-
-```{r}
-
-dur_pred<-predict(dt_dur,train)
-sqrt(mean((dur_pred-train$duration)^2))
-```
-
-```{r}
-
-dur_pred<-predict(dt_dur,test)
-sqrt(mean((dur_pred-test$duration)^2))
-```
-
-
-
-
-
-
-
-
-
-
-Random Forest
+Tuned Random Forest
 
 ```{r}
 # Establish a list of possible values for hyper-parameters
-mtry.values <- seq(4,6,1)
-nodesize.values <- seq(4,8,2)
-ntree.values <- seq(4e3,6e3,1e3)
+mtry.values <- seq(3,8,1)
+nodesize.values <- seq(4,12,2)
+ntree.values <- seq(3e3,9e3,1e3)
 
 # Create a data frame containing all combinations 
 hyper_grid <- expand.grid(mtry = mtry.values, nodesize = nodesize.values, ntree = ntree.values)
@@ -183,20 +204,17 @@ tuned_acq <- rfsrc(acq_formula,data = train,
 
 
 ```{r}
-trainbaselinerf<-ifelse(predict(tuned_acq,train)$predicted>0.5,1,0)
-table(trainbaselinerf,train$acquisition)
-print(sum(trainbaseline==train$acquisition)/length(train$acquisition))
+acq_tunedrf_train_pred<-ifelse(predict(tuned_acq,train)$predicted>0.5,1,0)
+acq_tunedrf_train_acc<-sum(acq_tunedrf_train_pred==train$acquisition)/length(train$acquisition)
+#Confusion Matrix
+#table(acq_tunedrf_train_pred,train$acquisition)
 
 
-```
+acq_tunedrf_test_pred<-ifelse(predict(tuned_acq,test)$predicted>0.5,1,0)
+acq_tunedrf_test_acc<-sum(acq_tunedrf_test_pred==test$acquisition)/length(test$acquisition)
 
-
-
-```{r}
-acq_predrf<-ifelse(predict(tuned_acq,test)$predicted>0.5,1,0)
-
-table(acq_pred,test$acquisition)
-print(sum(acq_pred==test$acquisition)/length(test$acquisition))
+#Confusion Matrix
+#table(acq_tunedrf_test_pred,test$acquisition)
 
 ```
 
@@ -205,9 +223,9 @@ print(sum(acq_pred==test$acquisition)/length(test$acquisition))
 
 ```{r}
 # Establish a list of possible values for hyper-parameters
-mtry.values <- seq(4,6,1)
-nodesize.values <- seq(4,8,2)
-ntree.values <- seq(4e3,6e3,1e3)
+mtry.values <- seq(3,8,1)
+nodesize.values <- seq(4,12,2)
+ntree.values <- seq(3e3,9e3,1e3)
 
 # Create a data frame containing all combinations 
 hyper_grid <- expand.grid(mtry = mtry.values, nodesize = nodesize.values, ntree = ntree.values)
@@ -237,25 +255,62 @@ opt_i <- which.min(oob_err)
 tuned_dur <- rfsrc(dur_formula,data = train,
                             mtry = hyper_grid[opt_i,1],
                             nodesize = hyper_grid[opt_i,2],
-                            ntree = hyper_grid[opt_i,3]) 
+                            ntree = hyper_grid[opt_i,3])
+```
 
 
-
-dur_predrf<-predict(tuned_dur,train)$predicted
-sqrt(mean((dur_predrf-train$duration)^2))
+```{r}
+dur_tunedrf_train_pred<-predict(tuned_dur,train)$predicted
+dur_tunedrf_train_RMSE<-sqrt(mean((dur_tunedrf_train_pred-train$duration)^2))
      
-```
 
-```{r}
-
-dur_predrf<-predict(tuned_dur,test)$predicted
-sqrt(mean((dur_predrf-test$duration)^2))
-
+dur_tunedrf_test_pred<-predict(tuned_dur,test)$predicted
+dur_tunedrf_test_RMSE<-sqrt(mean((dur_tunedrf_test_pred-test$duration)^2))
 
 ```
 
 
+
+Results
+
 ```{r}
+
+testaccuracies<-c(acq_tunedrf_test_acc,acq_untunedrf_test_acc,acq_lm_test_acc,acq_dt_test_acc)
+trainaccuracies<-c(acq_tunedrf_train_acc,acq_untunedrf_train_acc,acq_lm_train_acc,acq_dt_train_acc)
+testRMSE<-c(dur_tunedrf_test_RMSE,dur_untunedrf_test_RMSE,dur_lm_test_RMSE,dur_dt_test_RMSE)
+trainRMSE<-c(dur_tunedrf_train_RMSE,dur_untunedrf_train_RMSE,dur_lm_train_RMSE,dur_dt_train_RMSE)
+
+model<-c("Tuned Random Forest","Untuned Random Forest","Linear Model","Decision Tree")
+
+results<-data.frame(model,trainaccuracies,trainRMSE,testaccuracies,testRMSE)
+
+results
+
+```
+```{r}
+names(untuned_acq)
+```
+
+
+
+```{r}
+rattle::fancyRpartPlot(dur_dt, sub = "")
+rattle::fancyRpartPlot(acq_dt, sub = "")
+
+data.frame(importance = untuned_acq$importance) %>%
+  tibble::rownames_to_column(var = "variable") %>%
+  ggplot(aes(x = reorder(variable,importance), y = importance)) +
+    geom_bar(stat = "identity", fill = "violet", color = "black")+
+    coord_flip() +
+     labs(x = "Variables", y = "Variable importance")
+
+data.frame(importance = untuned_dur$importance) %>%
+  tibble::rownames_to_column(var = "variable") %>%
+  ggplot(aes(x = reorder(variable,importance), y = importance)) +
+    geom_bar(stat = "identity", fill = "violet", color = "black")+
+    coord_flip() +
+     labs(x = "Variables", y = "Variable importance")
+```
 
 ```
 
