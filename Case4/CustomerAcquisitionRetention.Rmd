@@ -34,11 +34,6 @@ model for acquiring customers.
 o Extra credit: generate PDP plots for all variables
 
 ```{r}
-table(AR$employees[AR$acquisition==0])
-
-names(AR)
-```
-```{r}
 View(customerChurn)
 ```
 
@@ -376,6 +371,13 @@ portfolio.mape
 ```
 
 
+```{r}
+?acquisitionRetention
+```
+
+```{r}
+?glm
+```
 
 
 
