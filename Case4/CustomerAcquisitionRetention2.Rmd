@@ -60,6 +60,56 @@ chart.Correlation(AR, histogram = TRUE, pch=20)
 ```
 
 # Feature Importance
+```{r}
+set.seed(123)
+AR_forest_dur = rfsrc(duration~acq_exp +
+                        ret_exp+
+                        freq+
+                        crossbuy+
+                        sow+
+                        profit+
+                        industry +
+                        revenue +
+                        employees,
+              data= AR,
+              importance= TRUE,
+              ntree=1000)
+```
+```{r}
+data.frame(importance= AR_forest_dur$importance+100) %>% 
+  log() %>% 
+  tibble::rownames_to_column(var = "variable") %>% 
+  ggplot(aes(x=reorder(variable,importance),y=importance))+
+  geom_bar(stat = "identity",fill="orange",color="black",width = 0.5)+
+  coord_flip()+
+  labs(x="variables",y="log transformed Varaible importance")
+```
+
+```{r}
+AR_forest_acq = rfsrc(acquisition~acq_exp +
+                        ret_exp+
+                        freq+
+                        crossbuy+
+                        sow+
+                        duration+
+                        profit+
+                        industry +
+                        revenue +
+                        employees,
+              data= AR,
+              importance= TRUE,
+              ntree=1000)
+```
+
+```{r}
+data.frame(importance= AR_forest_acq$importance+100) %>% 
+  log() %>% 
+  tibble::rownames_to_column(var = "variable") %>% 
+  ggplot(aes(x=reorder(variable,importance),y=importance))+
+  geom_bar(stat = "identity",fill="orange",color="black",width = 0.5)+
+  coord_flip()+
+  labs(x="variables",y="log transformed Varaible importance")
+```
 
 Formulas
 ```{r FormulaSetting, include=FALSE}
