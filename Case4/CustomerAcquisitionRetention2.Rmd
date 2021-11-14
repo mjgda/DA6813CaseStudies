@@ -4,10 +4,23 @@ author: "Visha Arumugam, Michael Grogan,Sanyogita Apte"
 date: "11/12/2021"
 output: html_document
 ---
+<style type="text/css">
 
+h1.title {
+  font-size: 38px;
+  text-align: center;
+}
+h4.author { 
+  font-size: 18px;
+  text-align: center;
+}
+h4.date { 
+  font-size: 18px;
+  text-align: center;
+}
+</style>
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 
 library(SMCRM) # CRM data
 library(dplyr) # data wrangling
@@ -16,9 +29,10 @@ library(ggplot2) # plotting
 library(rpart) # DT
 library(randomForestSRC) # RF
 library(sampleSelection)
+library(PerformanceAnalytics)
+```
 
-
-
+```{r readprepare, include=FALSE}
 data(acquisitionRetention)
 AR<-acquisitionRetention
 
@@ -30,10 +44,25 @@ set.seed(123)
 
 ```
 
+```{r EDA, include=TRUE}
+str(AR)
+```
 
+```{r EDA, include=TRUE}
+summary(AR)
+```
+
+```{r}
+sum(is.na(AR))
+```
+```{r}
+chart.Correlation(AR, histogram = TRUE, pch=20)
+```
+
+# Feature Importance
 
 Formulas
-```{r}
+```{r FormulaSetting, include=FALSE}
 acq_vars<-c("acq_exp","acq_exp_sq","industry","revenue","employees")
 acq_target<-"acquisition"
 
@@ -50,13 +79,10 @@ dur_formula<-as.formula(paste(dur_target,paste(dur_vars,collapse="+"),sep="~"))
 
 
 
-
-
 Logistic Regression
 ```{r}
 ###Logistic Acquisition prediction
 acq_lm<-glm(acq_formula,train,family=binomial(link="probit"))
-
 
 
 acq_lm_train_pred<-ifelse(predict(acq_lm,train,type="response")>0.5,1,0)
@@ -93,9 +119,13 @@ Single Decision Tree
 
 ```{r}
 acq_dt<-rpart(acq_formula,train)
-dur_dt<-rpart(dur_formula,train)
+rattle::fancyRpartPlot(acq_dt,sub="")
 ```
 
+```{r}
+dur_dt<-rpart(dur_formula,train)
+rattle::fancyRpartPlot(dur_dt,sub="")
+```
 
 ```{r}
 acq_dt_train_pred<-ifelse(predict(acq_dt,train)>0.5,1,0)
@@ -360,12 +390,29 @@ find.interaction(untuned_dur,
 Firms need to optimally allocate their resources in pursuing new clients as well as keeping their profitable current clients for as long as they can. The balancing act can be made easier by making predictions for which clients are likely to be acquired/retained given their associated data and spending money on those clients.
 
 ## III - Review of Related Literature
+For any business, customers are the basis for its success and revenue and that is why companies become more aware of the importance of gaining customers’ satisfaction. Customer relationship management (CRM) supports marketing by selecting target consumers and creating cost-effective relationships with them. CRM is the process of understanding customer behavior in order to support organization to improve customer acquisition, retention, and profitability. 
 
+There were many predictive analysis happened in CRM for customer retention using various dataset and based upon the usage of various tools and technologies,various exploration and various prediction techniques, different analysis came with different conclusion and Recommendation.
+
+As per the Journal "Machine-Learning Techniques for Customer Retention" by Sahar F. Sabbeh using telecom industry Data set, executed various prediction analysis to find out the Best customer rentention rate. Based on the results and findings ensemble methods such as both Random forest and Ad boost models gave the best accuracy. 
+
+There were many CRM Analysis happened using various industry data set. In most of the Analysis , ensemle methods provides the best accuracy with quite satisfying prediction rate.
 
   
 ## IV - Methodology
+We are going to use few prediction algorithm techniques to which customers will be acquired and for how long (duration) based on a feature set. The prediction algorithms are as follows Linear Regression, Logistic Decision tree and Random Forest.
 
+**Linear Regression:**
+  Linear regression attempts to model the relationship between dependent and independent variables by fitting a linear equation to observed data. The most common method for fitting a regression line is the method of least-squares. This method calculates the best-fitting line for the observed data by minimizing the sum of the squares of the vertical deviations from each data point to the line.
+  
+**Logistic Regression:**
+  Logistic Regression is a parametric classification method in which is used to model the probability of a certain class or event existing based upon the independent variables.In Logistic Regression, we don’t directly fit a straight line to our data like in linear regression. Instead, we fit a S shaped curve, called Sigmoid, to our observations.
+  
+**Decision Tree**
+Decision Tree (DT) is a model that generates a tree-like structure that represents set of decisions. DT returns the probability scores of class membership. DT is composed of: a) internal Nodes: each node refers to a single variable/feature and represents a test point at feature level; b) branches, which represent the  outcome of the test and are represented by lines that finally lead to c) leaf Nodes which represent the class labels. That is how decision rules are established and used to classify new instances. DT is a flexible model that supports both categorical and continuous data. Due to their flexibility they gained popularity and became one of the most commonly used models for churn prediction.
 
+**Random Forest**
+Random forests (RF) are an ensemble learning technique that can support classification and regression. It extends the basic idea of single classification tree by growing many classification trees in the training phase. To classify an instance, each tree in the forest generates its response (vote for a class), the model choses the class that has receive the most votes over all the trees in the forest. One major advantage of RF over traditional decision trees is the protection against overfitting which makes the model able to deliver a high performance
 
 ## V - Data
 The values available to a firm trying to determine which clients they are likely to acquire would not include values such as purchase frequency or duration of partnership, because these data would be unknown when trying to predict the potential of a client to become an acquisition. Therefore the only variables available for predicting acquisition are expenditure towards acquisition, whether the potential client is in the industry, the revenue of the client, and the number of employees of the client.
