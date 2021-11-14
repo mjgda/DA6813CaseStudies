@@ -19,6 +19,7 @@ h4.date {
   text-align: center;
 }
 </style>
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -51,7 +52,7 @@ set.seed(123)
 
 
 
-```{r FormulaSetting, echo=F}
+```{r, echo=F}
 acq_vars<-c("acq_exp","acq_exp_sq","industry","revenue","employees")
 acq_target<-"acquisition"
 
@@ -126,7 +127,7 @@ dur_flm_test_RMSE<-sqrt(mean((dur_pred-test$duration)^2))
 
 
 
-```{r}
+```{r, echo=F}
 #Single Decision Tree
 acq_dt<-rpart(acq_formula,train)
 
@@ -155,7 +156,7 @@ dur_dt_test_RMSE<-sqrt(mean((dur_dt_test_pred-test$duration)^2))
 
 
 
-```{r}
+```{r, echo=F}
 #Un-tuned Random Forest
 untuned_acq <- rfsrc(acq_formula,data = train,importance = TRUE)
 
@@ -325,7 +326,7 @@ Decision Tree (DT) is a model that generates a tree-like structure that represen
 **Random Forest**
 Random forests (RF) are an ensemble learning technique that can support classification and regression. It extends the basic idea of single classification tree by growing many classification trees in the training phase. To classify an instance, each tree in the forest generates its response (vote for a class), the model choses the class that has receive the most votes over all the trees in the forest. One major advantage of RF over traditional decision trees is the protection against overfitting which makes the model able to deliver a high performance
 
-We examine
+
 
 ## V - Data
 The values available to a firm trying to determine which clients they are likely to acquire would not include values such as purchase frequency or duration of partnership, because these data would be unknown when trying to predict the potential of a client to become an acquisition. Therefore the only variables available for predicting acquisition are expenditure towards acquisition, whether the potential client is in the industry, the revenue of the client, and the number of employees of the client.
@@ -334,7 +335,7 @@ The variables used in the duration model are those tracking expenditure towards 
 
 We see that when measuring the variable importance in the random forest model that includes both the variables used in the acquisition model and the duration model, the variables from the acquisition model are not important as the variables mentioned for duration. 
 
-```{r}
+```{r, echo=F}
 data.frame(importance = untuned_acq$importance) %>%
   tibble::rownames_to_column(var = "variable") %>%
   ggplot(aes(x = reorder(variable,importance), y = importance)) +
@@ -350,8 +351,8 @@ data.frame(importance = untuned_full_dur$importance) %>%
      labs(x = "Variables", y = "Variable importance")
 ```
 
-We can also see the effect each of these variables has on the target variables of acquisition and duration by plotting partial dependence of these variables.
-```{r}
+We can also see the effect each of these variables has on the target variables of acquisition and duration by plotting partial dependence of these variables. The following charts show the effect on acquisition.
+```{r, echo=F}
 for(i in acq_vars){
 sequence_<-seq(quantile(AR[[i]])[[2]],quantile(AR[[i]])[[4]],(quantile(AR[[i]])[[2]]-quantile(AR[[i]])[[4]])/-30)
 means.exp<-partial(untuned_acq,partial.xvar = i,
@@ -368,10 +369,10 @@ print(
   
   )
 }
+```
 
-
-
-
+The following charts show the effect on duration
+```{r, echo=F}
 for(i in dur_vars[-7]){
 sequence_<-seq(quantile(AR[[i]])[[2]],quantile(AR[[i]])[[4]],(quantile(AR[[i]])[[2]]-quantile(AR[[i]])[[4]])/-30)
 means.exp<-partial(untuned_dur,partial.xvar = i,
@@ -399,7 +400,7 @@ We are able to determine from the table below the varying degrees of performance
 The table shows the different models used, and how those models performed in accuracy for predicting whether a company would be acquired as a customer, and how long of a duration that company would remain as a customer, expressed as root mean squared error of predictions vs actuals. These statistics are given for both the training set and the test set, which was divided by 70 to 30 percent of the data.
 For labeling purposes, the models trained using the general linear model are labeled as linear models, but for the models focused on determining likelihood of acquisition, logistic regression was used and then the results were used in the duration model which used a typical gaussian linear regression.
 
-```{r}
+```{r,echo=F}
 
 testaccuracies<-c(acq_tunedrf_test_acc,acq_untunedrf_test_acc,acq_lm_test_acc,acq_lm_test_acc,acq_dt_test_acc)
 trainaccuracies<-c(acq_tunedrf_train_acc,acq_untunedrf_train_acc,acq_lm_train_acc,acq_lm_train_acc,acq_dt_train_acc)
@@ -416,7 +417,7 @@ results
 Looking first at the results for the accuracy in determining the acquisition of a company as a customer, all of the models perform similarly with accuracy between 81 and 83 percent. Not only is the accuracy very similar for the tuned random forest model as well as the linear model with only the duration-relevant variables, the confusion matrices below show that the distribution of predictions is also very similar.
 
 
-```{r}
+```{r,echo=F}
 #Confusion Matrix
 table(acq_lm_test_pred,test$acquisition,dnn=c("LM","Actuals"))
 #Confusion Matrix
@@ -427,7 +428,7 @@ To confirm the implication of the chart above showing variable importances for t
 With that said, the linear models are very slightly outperformed by the tuned random forest in terms of RMSE for duration values in the training data. However, when applied to the testing data, the linear model outperforms the rest of the models, including the random forest models. This swing from the training to testing data indicates that there is some degree of over-fitting of the random forest model, although the model with the tuned hyper parameters still outperforms the untuned version, and far outperforms the decision tree, both of which are shown below.
 
 
-```{r}
+```{r,echo=F}
 
 
 rattle::fancyRpartPlot(dur_dt, sub = "")
