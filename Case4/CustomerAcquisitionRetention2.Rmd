@@ -1,5 +1,5 @@
 ---
-title: "CustomerAcquisitionRetention2"
+title: "CustomerAcquisitionRetention"
 author: "Visha Arumugam, Michael Grogan,Sanyogita Apte"
 date: "11/12/2021"
 output: html_document
@@ -13,11 +13,10 @@ library(SMCRM) # CRM data
 library(dplyr) # data wrangling
 library(tidyr) # data wrangling
 library(ggplot2) # plotting
-library(survival) # survival
 library(rpart) # DT
 library(randomForestSRC) # RF
 library(sampleSelection)
-library(micEcon)
+
 
 
 data(acquisitionRetention)
@@ -28,8 +27,6 @@ train <- AR[idx.train,]
 test <- AR[-idx.train,]
 
 set.seed(123)
-
-
 
 ```
 
@@ -50,6 +47,7 @@ dur_target<-"duration"
 dur_formula<-as.formula(paste(dur_target,paste(dur_vars,collapse="+"),sep="~"))
 
 ```
+
 
 
 
@@ -289,11 +287,44 @@ results
 ```
 
 
-
-
 ```{r}
-rattle::fancyRpartPlot(dur_dt, sub = "")
-rattle::fancyRpartPlot(acq_dt, sub = "")
+for(i in acq_vars){
+sequence_<-seq(quantile(AR[[i]])[[2]],quantile(AR[[i]])[[4]],(quantile(AR[[i]])[[2]]-quantile(AR[[i]])[[4]])/-30)
+means.exp<-partial(untuned_acq,partial.xvar = i,
+                           partial.values = sequence_)$regrOutput$acquisition %>% colMeans()
+
+marginal.effect.df <-
+  data.frame(pred.acquisition = means.exp, sequence_ = sequence_)
+
+print(
+  ggplot(marginal.effect.df, aes(x = sequence_, y = pred.acquisition)) +
+  geom_point(shape = 20, color = "purple", size = 2, stroke = 1.5)+
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = FALSE, color = "black")+
+  labs(x = i, y = "Predicted acquisition") 
+  
+  )
+}
+
+
+
+
+for(i in dur_vars[-7]){
+sequence_<-seq(quantile(AR[[i]])[[2]],quantile(AR[[i]])[[4]],(quantile(AR[[i]])[[2]]-quantile(AR[[i]])[[4]])/-30)
+means.exp<-partial(untuned_dur,partial.xvar = i,
+                           partial.values = sequence_)$regrOutput$duration %>% colMeans()
+
+marginal.effect.df <-
+  data.frame(pred.duration = means.exp, sequence_ = sequence_)
+
+print(
+  ggplot(marginal.effect.df, aes(x = sequence_, y = pred.duration)) +
+  geom_point(shape = 20, color = "purple", size = 2, stroke = 1.5)+
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = FALSE, color = "black")+
+  labs(x = i, y = "Predicted duration") 
+  
+  )
+}
+
 
 data.frame(importance = untuned_acq$importance) %>%
   tibble::rownames_to_column(var = "variable") %>%
@@ -308,7 +339,47 @@ data.frame(importance = untuned_dur$importance) %>%
     geom_bar(stat = "identity", fill = "violet", color = "black")+
     coord_flip() +
      labs(x = "Variables", y = "Variable importance")
-```
+
+
+rattle::fancyRpartPlot(dur_dt, sub = "")
+rattle::fancyRpartPlot(acq_dt, sub = "")
 
 ```
+```{r}
+
+find.interaction(untuned_dur,
+                      method = "vimp",
+                      importance = "permute")
+```
+
+
+## I - Executive Summary
+
+
+## II - The Problem
+Firms need to optimally allocate their resources in pursuing new clients as well as keeping their profitable current clients for as long as they can. The balancing act can be made easier by making predictions for which clients are likely to be acquired/retained given their associated data and spending money on those clients.
+
+## III - Review of Related Literature
+
+
+  
+## IV - Methodology
+
+
+
+## V - Data
+The values available to a firm trying to determine which clients they are likely to acquire would not include values such as purchase frequency or duration of partnership, because these data would be unknown when trying to predict the potential of a client to become an acquisition. Therefore the only variables available for predicting acquisition are expenditure towards acquisition, whether the potential client is in the industry, the revenue of the client, and the number of employees of the client.
+
+Duration variables...should the duration model include those variables as well?...I will try more in the morning
+
+
+
+## VI - Findings
+
+
+## VII - Conclusion
+
+
+## Appendix
+
 
