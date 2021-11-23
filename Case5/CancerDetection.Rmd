@@ -1,0 +1,105 @@
+---
+title: "CancerDetection"
+author: "Visha Arumugam(vcu526), Michael Grogan(ldl776),Sanyogita Apte(jlh562)"
+date: "November 21, 2021"
+output: html_document
+---
+<style type="text/css">
+
+h1.title {
+  font-size: 38px;
+  text-align: center;
+}
+h4.author { 
+  font-size: 18px;
+  text-align: center;
+}
+h4.date { 
+  font-size: 18px;
+  text-align: center;
+}
+</style>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(Boruta)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(corrplot)
+setwd("~/MSDA/Fall 2021/Data Analytics Applications/Case Study 1/DA6813CaseStudies/Case5")
+```
+
+```{r}
+set.seed(12345)
+cancer_data<-read.csv("CancerData.csv")
+```
+
+```{r}
+str(cancer_data)
+```
+```{r}
+cancer_data$diagnosis=as.factor(cancer_data$diagnosis)
+can_analysis_data=cancer_data[,-c(0:1)]
+str(cancer_data)
+```
+
+
+```{r}
+summary(cancer_data)
+```
+
+```{r}
+#Check for Missing values
+sapply(cancer_data, function(x) sum(is.na(x)))
+```
+
+```{r}
+plot(cancer_data$diagnosis,main="Unbalanced Dataset")
+```
+## Exploratory Data Analysis
+
+```{r}
+# frequency of the cancer distribution
+diag.table = table(cancer_data$diagnosis)
+
+# Create a pie chart 
+diag.prop.table <- prop.table(diag.table)*100
+diag.prop.df <- as.data.frame(diag.prop.table)
+colnames(diag.prop.df)=c("Diagnosis","Proportion")
+
+diag.prop.df <- diag.prop.df %>%
+  arrange(desc(Diagnosis)) %>%
+  mutate(lab.ypos = cumsum(Proportion) - 0.5*Proportion)
+diag.prop.df
+
+ggplot(diag.prop.df, aes(x = "", y = Proportion, fill = Diagnosis)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
+  coord_polar("y", start = 0)+
+  geom_text(aes(y = lab.ypos, label = Proportion), color = "white")+
+  scale_fill_manual(values = c("#868686FF", "#CD534CFF")) +
+  theme_void()
+```
+```{r}
+data_mean <- cancer_data[ ,c("diagnosis", "radius_mean", "texture_mean","perimeter_mean", "area_mean", "smoothness_mean", "compactness_mean", "concavity_mean", "concave.points_mean", "symmetry_mean", "fractal_dimension_mean" )]
+
+data_se <- cancer_data[ ,c("diagnosis", "radius_se", "texture_se","perimeter_se", "area_se", "smoothness_se", "compactness_se", "concavity_se", "concave.points_se", "symmetry_se", "fractal_dimension_se" )]
+
+data_worst <- cancer_data[ ,c("diagnosis", "radius_worst", "texture_worst","perimeter_worst", "area_worst", "smoothness_worst", "compactness_worst", "concavity_worst", "concave.points_worst", "symmetry_worst", "fractal_dimension_worst" )]
+
+#Plot histograms of "_mean" variables group by diagnosis
+ggplot(data = melt(data_mean, id.var = "diagnosis"), mapping = aes(x = value)) + 
+    geom_histogram(bins = 10, aes(fill=diagnosis), alpha=0.5) + facet_wrap(~variable, scales =      'free_x')
+
+ggplot(data = melt(data_se, id.var = "diagnosis"), mapping = aes(x = value)) + 
+    geom_histogram(bins = 10, aes(fill=diagnosis), alpha=0.5) + facet_wrap(~variable, scales =      'free_x')
+
+ggplot(data = melt(data_worst, id.var = "diagnosis"), mapping = aes(x = value)) + 
+    geom_histogram(bins = 10, aes(fill=diagnosis), alpha=0.5) + facet_wrap(~variable, scales =      'free_x')
+```
+
+```{r}
+corMatMy <- cor(can_analysis_data[,2:31])
+corrplot(corMatMy, order = "hclust", tl.cex = 0.7)
+```
+
